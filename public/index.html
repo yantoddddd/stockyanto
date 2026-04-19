@@ -16,13 +16,17 @@
         button{background:#3b82f6;border:none;padding:10px;border-radius:12px;color:white;cursor:pointer;width:100%;margin-top:10px;}
         button:disabled{opacity:0.5;}
         .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);justify-content:center;align-items:center;z-index:1000;}
-        .modal-content{background:#1e293b;border-radius:24px;padding:30px;max-width:400px;width:90%;}
+        .modal-content{background:#1e293b;border-radius:24px;padding:30px;max-width:450px;width:90%;max-height:90vh;overflow-y:auto;}
         input{width:100%;padding:10px;margin:10px 0;border-radius:10px;border:none;background:#0f172a;color:white;}
-        .qris-img{width:100%;max-width:250px;margin:10px auto;display:block;}
+        .qris-img{width:100%;max-width:250px;margin:15px auto;display:block;border-radius:12px;}
         .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;padding:10px20px;border-radius:40px;opacity:0;transition:0.2s;z-index:1001;}
         .status-pending{color:#f59e0b;}
         .status-paid{color:#10b981;}
         .code-box{background:#0f172a;padding:15px;border-radius:12px;font-family:monospace;word-break:break-all;margin-top:15px;}
+        .btn-batal{background:#ef4444;margin-top:10px;}
+        .btn-batal:hover{background:#dc2626;}
+        .loading{text-align:center;padding:20px;}
+        .qris-container{text-align:center;}
     </style>
 </head>
 <body>
@@ -34,18 +38,26 @@
 <div id="paymentModal" class="modal">
     <div class="modal-content">
         <h3 id="modalProductName"></h3>
-        <p id="modalPrice"></p>
-        <input type="text" id="customerName" placeholder="Nama Anda" required>
-        <input type="email" id="customerEmail" placeholder="Email (opsional)">
-        <div id="qrisContainer" style="display:none;">
-            <img id="qrisImage" class="qris-img" alt="QRIS">
-            <p style="font-size:0.7rem;text-align:center;">Scan QRIS untuk membayar</p>
-            <p id="paymentStatus" style="text-align:center;margin-top:10px;">⏳ Menunggu pembayaran...</p>
-            <div id="resultCode" style="display:none;"></div>
-            <button id="cancelBtn" style="background:#ef4444;margin-top:10px;">Batal</button>
+        <p id="modalPrice" class="price"></p>
+        
+        <div id="orderForm">
+            <input type="text" id="customerName" placeholder="Nama Anda" required>
+            <input type="email" id="customerEmail" placeholder="Email (opsional)">
+            <button id="confirmBtn">Beli Sekarang</button>
+            <button onclick="closeModal()" style="background:#334155;">Tutup</button>
         </div>
-        <button id="confirmBtn">Beli Sekarang</button>
-        <button onclick="closeModal()" style="background:#334155;margin-top:10px;">Tutup</button>
+        
+        <div id="qrisContainer" style="display:none;">
+            <div class="qris-container">
+                <p>Scan QRIS di bawah untuk membayar:</p>
+                <img id="qrisImage" class="qris-img" alt="QRIS Code">
+                <p style="font-size:0.7rem;color:#94a3b8;">Nominal: Rp <span id="qrisAmount"></span></p>
+                <p style="font-size:0.7rem;color:#f59e0b;" id="expiryTime"></p>
+                <div id="paymentStatus" style="margin:15px 0;">⏳ Menunggu pembayaran...</div>
+                <div id="resultCode" style="display:none;"></div>
+                <button id="cancelBtn" class="btn-batal">Batalkan Pesanan</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -65,34 +77,55 @@ function toast(msg, err=false){
 }
 
 async function loadProducts(){
-    let res=await fetch('/api/products');
-    let data=await res.json();
-    let g=document.getElementById('grid');
-    if(!data.products||!data.products.length){
-        g.innerHTML='<div style="text-align:center;">Belum ada produk</div>';
-        return;
+    try{
+        let res=await fetch('/api/products');
+        let data=await res.json();
+        let g=document.getElementById('grid');
+        if(!data.products||!data.products.length){
+            g.innerHTML='<div style="text-align:center;">Belum ada produk</div>';
+            return;
+        }
+        g.innerHTML=data.products.map(p=>`<div class="card">
+            <h3>${escapeHtml(p.name)}</h3>
+            <div class="price">Rp ${(p.price||0).toLocaleString()}</div>
+            <div class="stock">Stok: ${p.stock}</div>
+            <button onclick="openOrder(${JSON.stringify(p).replace(/"/g,'&quot;')})" ${p.stock<=0?'disabled':''}>${p.stock>0?'Beli Sekarang':'Habis'}</button>
+        </div>`).join('');
+    }catch(e){
+        toast('Gagal load produk',true);
     }
-    g.innerHTML=data.products.map(p=>`<div class="card">
-        <h3>${p.name}</h3>
-        <div class="price">Rp ${(p.price||0).toLocaleString()}</div>
-        <div class="stock">Stok: ${p.stock}</div>
-        <button onclick="openOrder(${JSON.stringify(p).replace(/"/g,'&quot;')})" ${p.stock<=0?'disabled':''}>${p.stock>0?'Beli Sekarang':'Habis'}</button>
-    </div>`).join('');
+}
+
+function escapeHtml(str){
+    if(!str) return '';
+    return str.replace(/[&<>]/g, function(m){
+        if(m==='&') return '&amp;';
+        if(m==='<') return '&lt;';
+        if(m==='>') return '&gt;';
+        return m;
+    });
 }
 
 function openOrder(product){
     currentProduct=product;
     document.getElementById('modalProductName').innerText=product.name;
-    document.getElementById('modalPrice').innerHTML=`<span class="price">Rp ${product.price.toLocaleString()}</span>`;
-    document.getElementById('confirmBtn').style.display='block';
+    document.getElementById('modalPrice').innerHTML=`Rp ${product.price.toLocaleString()}`;
+    
+    // Reset form
+    document.getElementById('orderForm').style.display='block';
     document.getElementById('qrisContainer').style.display='none';
     document.getElementById('customerName').value='';
     document.getElementById('customerEmail').value='';
+    document.getElementById('resultCode').style.display='none';
+    document.getElementById('paymentStatus').innerHTML='⏳ Menunggu pembayaran...';
+    document.getElementById('qrisAmount').innerText='';
+    document.getElementById('expiryTime').innerText='';
+    
     if(paymentInterval) clearInterval(paymentInterval);
     document.getElementById('paymentModal').style.display='flex';
 }
 
-async function closeModal(){
+function closeModal(){
     if(paymentInterval) clearInterval(paymentInterval);
     document.getElementById('paymentModal').style.display='none';
     currentProduct=null;
@@ -101,63 +134,97 @@ async function closeModal(){
 
 document.getElementById('confirmBtn').onclick=async()=>{
     let name=document.getElementById('customerName').value.trim();
-    if(!name){toast('Nama wajib diisi',true);return;}
+    if(!name){
+        toast('Nama wajib diisi',true);
+        return;
+    }
     
-    document.getElementById('confirmBtn').disabled=true;
-    document.getElementById('confirmBtn').innerText='Memproses...';
+    let confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.disabled=true;
+    confirmBtn.innerText='Memproses...';
     
-    let res=await fetch('/api/order',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-            productId:currentProduct.id,
-            customerName:name,
-            customerEmail:document.getElementById('customerEmail').value.trim()
-        })
-    });
-    let data=await res.json();
-    
-    if(data.success){
-        currentOrderId=data.orderId;
-        document.getElementById('qrisImage').src=data.qrisImage;
-        document.getElementById('qrisContainer').style.display='block';
-        document.getElementById('confirmBtn').style.display='none';
-        startPaymentCheck();
-    }else{
-        toast(data.error,true);
-        document.getElementById('confirmBtn').disabled=false;
-        document.getElementById('confirmBtn').innerText='Beli Sekarang';
+    try{
+        let res=await fetch('/api/order',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+                productId:currentProduct.id,
+                customerName:name,
+                customerEmail:document.getElementById('customerEmail').value.trim()
+            })
+        });
+        let data=await res.json();
+        
+        if(data.success){
+            currentOrderId=data.orderId;
+            
+            // Tampilkan QRIS
+            document.getElementById('qrisImage').src=data.qrisImage;
+            document.getElementById('qrisAmount').innerText=data.amount.toLocaleString();
+            
+            // Hitung expired time
+            let expiredDate = new Date(data.expiredAt);
+            let expireText = `Kadaluarsa: ${expiredDate.toLocaleTimeString()}`;
+            document.getElementById('expiryTime').innerText=expireText;
+            
+            // Sembunyikan form, tampilkan QRIS
+            document.getElementById('orderForm').style.display='none';
+            document.getElementById('qrisContainer').style.display='block';
+            
+            startPaymentCheck();
+            toast('QRIS berhasil dibuat, silakan scan');
+        }else{
+            toast(data.error || 'Gagal membuat pesanan', true);
+            confirmBtn.disabled=false;
+            confirmBtn.innerText='Beli Sekarang';
+        }
+    }catch(e){
+        toast('Error: '+e.message, true);
+        confirmBtn.disabled=false;
+        confirmBtn.innerText='Beli Sekarang';
     }
 };
 
 function startPaymentCheck(){
     if(paymentInterval) clearInterval(paymentInterval);
     paymentInterval=setInterval(async()=>{
-        let res=await fetch(`/api/check-payment/${currentOrderId}`);
-        let data=await res.json();
-        if(data.status==='paid'){
-            clearInterval(paymentInterval);
-            document.getElementById('paymentStatus').innerHTML='<span class="status-paid">✅ Pembayaran berhasil!</span>';
-            document.getElementById('resultCode').style.display='block';
-            document.getElementById('resultCode').innerHTML=`<div class="code-box"><strong>Kode/Item Anda:</strong><br>${data.productCode}</div>`;
-            document.getElementById('cancelBtn').style.display='none';
-            toast('Pembayaran berhasil! Barang dikirim.');
-        }else if(data.status==='expired'){
-            clearInterval(paymentInterval);
-            document.getElementById('paymentStatus').innerHTML='<span style="color:#ef4444;">❌ QRIS kadaluarsa</span>';
-            toast('QRIS sudah kadaluarsa',true);
-        }else{
-            document.getElementById('paymentStatus').innerHTML='⏳ Menunggu pembayaran...';
+        if(!currentOrderId) return;
+        
+        try{
+            let res=await fetch(`/api/check-payment/${currentOrderId}`);
+            let data=await res.json();
+            
+            if(data.status==='paid'){
+                clearInterval(paymentInterval);
+                document.getElementById('paymentStatus').innerHTML='<span class="status-paid">✅ Pembayaran berhasil!</span>';
+                document.getElementById('resultCode').style.display='block';
+                document.getElementById('resultCode').innerHTML=`<div class="code-box"><strong>🎉 Barang Digital Anda:</strong><br><br>${escapeHtml(data.productCode)}</div>`;
+                document.getElementById('cancelBtn').style.display='none';
+                toast('Pembayaran berhasil! Cek kode di atas');
+            }else if(data.status==='expired'){
+                clearInterval(paymentInterval);
+                document.getElementById('paymentStatus').innerHTML='<span style="color:#ef4444;">❌ QRIS sudah kadaluarsa</span>';
+                toast('QRIS sudah kadaluarsa', true);
+            }else{
+                document.getElementById('paymentStatus').innerHTML='⏳ Menunggu pembayaran...';
+            }
+        }catch(e){
+            console.error('Check payment error:',e);
         }
     },3000);
 }
 
 document.getElementById('cancelBtn')?.addEventListener('click',async()=>{
-    if(confirm('Batalkan pesanan?')){
-        await fetch(`/api/cancel-order/${currentOrderId}`,{method:'POST'});
-        clearInterval(paymentInterval);
-        toast('Pesanan dibatalkan');
-        closeModal();
+    if(!currentOrderId) return;
+    if(confirm('Batalkan pesanan? QRIS akan di-cancel.')){
+        try{
+            await fetch(`/api/cancel-order/${currentOrderId}`,{method:'POST'});
+            clearInterval(paymentInterval);
+            toast('Pesanan dibatalkan');
+            closeModal();
+        }catch(e){
+            toast('Gagal batalkan', true);
+        }
     }
 });
 
