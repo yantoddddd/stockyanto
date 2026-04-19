@@ -29,7 +29,9 @@ async function generateQRIS(amount, paymentReference) {
       payment_reference: paymentReference
     })
   });
-  return await response.json();
+  const data = await response.json();
+  console.log('Generate QRIS response:', data);
+  return data;
 }
 
 // ========== FUNGSI CEK STATUS ==========
@@ -56,15 +58,16 @@ app.post('/api/order', async (req, res) => {
   if (!product) return res.status(404).json({ error: 'Produk tidak ditemukan' });
   if (product.stock <= 0) return res.status(400).json({ error: 'Stok habis' });
   
-  // Generate QRIS dengan nominal = harga produk (admin yang set)
+  // Generate QRIS
   const paymentRef = `order-${Date.now()}-${productId}`;
   const qrisResult = await generateQRIS(product.price, paymentRef);
   
   if (qrisResult.status !== 'success') {
-    return res.status(500).json({ error: 'Gagal generate QRIS' });
+    console.log('QRIS generate failed:', qrisResult);
+    return res.status(500).json({ error: qrisResult.message || 'Gagal generate QRIS' });
   }
   
-  // Simpan order
+  // Simpan order (stok BELUM dikurang, nanti pas payment success)
   const newOrder = {
     id: Date.now(),
     qrisId: qrisResult.data.qris_id,
@@ -96,32 +99,40 @@ app.get('/api/check-payment/:orderId', async (req, res) => {
   const order = orders.find(o => o.id == req.params.orderId);
   if (!order) return res.status(404).json({ error: 'Order tidak ditemukan' });
   
-  // Kalo udah sukses, langsung balikin
+  // Kalo udah sukses, langsung balikin (tanpa panggil API lagi)
   if (order.status === 'paid') {
     return res.json({ success: true, status: 'paid', productCode: order.productCode });
   }
   
-  // Cek ke API QRISPY
-  const statusResult = await checkPaymentStatus(order.qrisId);
-  
-  if (statusResult.status === 'success' && statusResult.data.status === 'paid') {
-    order.status = 'paid';
-    order.paidAt = new Date().toISOString();
-    
-    // Kurangi stok produk
-    const product = products.find(p => p.id == order.productId);
-    if (product) product.stock -= 1;
-    
-    return res.json({ success: true, status: 'paid', productCode: order.productCode });
-  }
-  
-  // Cek kadaluarsa
+  // Kalo expired
   if (new Date(order.expiredAt) < new Date()) {
     order.status = 'expired';
     return res.json({ success: true, status: 'expired' });
   }
   
-  res.json({ success: true, status: 'pending' });
+  // Cek ke API QRISPY
+  try {
+    const statusResult = await checkPaymentStatus(order.qrisId);
+    console.log('Check payment:', order.qrisId, statusResult);
+    
+    if (statusResult.status === 'success' && statusResult.data.status === 'paid') {
+      // Hanya kurangi stok SEKALI saat payment sukses
+      const product = products.find(p => p.id == order.productId);
+      if (product && product.stock > 0) {
+        product.stock -= 1;
+        console.log(`Stok ${product.name} berkurang jadi ${product.stock}`);
+      }
+      order.status = 'paid';
+      order.paidAt = new Date().toISOString();
+      
+      return res.json({ success: true, status: 'paid', productCode: order.productCode });
+    }
+    
+    res.json({ success: true, status: 'pending' });
+  } catch (err) {
+    console.error('Check payment error:', err);
+    res.json({ success: true, status: 'pending' });
+  }
 });
 
 // ========== API: CANCEL ORDER ==========
@@ -132,11 +143,12 @@ app.post('/api/cancel-order/:orderId', async (req, res) => {
     return res.status(400).json({ error: 'Order sudah diproses' });
   }
   
-  // Cancel ke QRISPY
-  await fetch(`${QRISPY_API_URL}/api/payment/qris/${order.qrisId}/cancel`, {
-    method: 'POST',
-    headers: { 'X-API-Token': QRISPY_API_TOKEN }
-  });
+  try {
+    await fetch(`${QRISPY_API_URL}/api/payment/qris/${order.qrisId}/cancel`, {
+      method: 'POST',
+      headers: { 'X-API-Token': QRISPY_API_TOKEN }
+    });
+  } catch(e) {}
   
   order.status = 'cancelled';
   res.json({ success: true });
