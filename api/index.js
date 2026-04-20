@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
+const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -42,16 +43,22 @@ async function setDB(products, orders, oldSha) {
   return data.content.sha;
 }
 
-// ========== API GET ORDER ==========
+// ========== API GET ORDER (dengan bonus) ==========
 app.get('/api/get-order/:orderCode', async (req, res) => {
   const db = await getDB();
   const order = db.orders.find(o => o.orderCode === req.params.orderCode);
   if (!order) return res.json({ success: false });
+  
+  // Ambil bonus dari produk
+  const product = db.products.find(p => p.id == order.productId);
+  const bonusContent = product?.bonusContent || '';
+  
   res.json({
     success: true,
     status: order.status,
     productName: order.productName,
     productCode: order.productCode || 'Tidak ada kode',
+    bonusContent: bonusContent,
     qrisImage: order.qrisImage,
     totalAmount: order.totalAmount,
     expiredAt: order.expiredAt
@@ -119,7 +126,7 @@ app.post('/api/create-order', async (req, res) => {
     qrisId: qrisId,
     productId: product.id,
     productName: product.name,
-    productCode: product.itemContent,  // ✅ PASTIKAN INI ADA!
+    productCode: product.itemContent,
     price: product.price,
     totalAmount: totalAmount || product.price,
     customerName,
@@ -181,7 +188,6 @@ app.get('/api/admin/products', async (req, res) => {
 });
 
 // ========== ROUTING HALAMAN ==========
-const path = require('path');
 app.get('/order/:code', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/order.html'));
 });
