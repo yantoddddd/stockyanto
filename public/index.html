@@ -115,11 +115,10 @@
         loading.style.display = 'block';
 
         try {
-            // Hitung admin fee 2.5%
-            const adminFee = Math.round(currentProduct.price * 0.025);
-            const totalAmount = currentProduct.price + adminFee;
+            // Total = harga produk (tanpa admin fee)
+            const totalAmount = currentProduct.price;
 
-            // 1. Generate QRIS dari frontend (biar ga kena blokir)
+            // 1. Generate QRIS dari frontend
             const qrisRes = await fetch(`${QRISPY_API_URL}/api/payment/qris/generate`, {
                 method: 'POST',
                 headers: { 'X-API-Token': QRISPY_TOKEN, 'Content-Type': 'application/json' },
@@ -139,7 +138,6 @@
                     qrisId: qrisData.data.qris_id,
                     qrisImage: qrisData.data.qris_image_url,
                     totalAmount: totalAmount,
-                    adminFee: adminFee,
                     expiredAt: qrisData.data.expired_at
                 })
             });
