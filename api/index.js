@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
+const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -46,7 +47,7 @@ async function setDB(products, orders, oldSha) {
   return data.content.sha;
 }
 
-async function sendTelegramNotification(order, source = 'polling') {
+async function sendTelegramNotification(order, source = 'webhook') {
   try {
     const message = `
 ✅ *PEMBAYARAN BERHASIL!* (via ${source})
@@ -55,41 +56,48 @@ async function sendTelegramNotification(order, source = 'polling') {
 👤 *Pembeli:* ${order.customerName}
 💰 *Total:* Rp ${order.totalAmount.toLocaleString()}
 🆔 *Order ID:* ${order.orderCode}
-📅 *Waktu:* ${new Date().toLocaleString('id-ID')}
 
 🔑 *Kode Item:* 
 ${order.productCode}
     `;
-    
     await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: TELEGRAM_CHAT_ID,
-        text: message,
-        parse_mode: 'Markdown'
-      })
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' })
     });
-    console.log(`📱 Telegram notifikasi terkirim via ${source}`);
-  } catch (err) {
-    console.error('Telegram error:', err);
-  }
+  } catch (err) {}
 }
 
-// ========== CEK STATUS KE QRISPY LANGSUNG (POLLING BACKUP) ==========
-app.get('/api/check-payment/:orderId', async (req, res) => {
+// ========== API GET ORDER (untuk halaman order.html) ==========
+app.get('/api/get-order/:orderCode', async (req, res) => {
   const db = await getDB();
-  const order = db.orders.find(o => o.id == req.params.orderId || o.orderCode == req.params.orderId);
-  if (!order) return res.status(404).json({ error: 'Order tidak ditemukan' });
+  const order = db.orders.find(o => o.orderCode === req.params.orderCode);
+  if (!order) return res.json({ success: false });
+  res.json({
+    success: true,
+    status: order.status,
+    productName: order.productName,
+    productCode: order.productCode,
+    qrisImage: order.qrisImage,
+    totalAmount: order.totalAmount,
+    expiredAt: order.expiredAt
+  });
+});
+
+// ========== CEK STATUS PEMBAYARAN (POLLING) ==========
+app.get('/api/check-payment/:orderCode', async (req, res) => {
+  const db = await getDB();
+  const order = db.orders.find(o => o.orderCode === req.params.orderCode);
+  if (!order) return res.json({ status: 'not_found' });
   
   if (order.status === 'paid') {
-    return res.json({ success: true, status: 'paid', productCode: order.productCode });
+    return res.json({ status: 'paid', productCode: order.productCode });
   }
   
   if (new Date(order.expiredAt) < new Date()) {
     order.status = 'expired';
     await setDB(db.products, db.orders, db.sha);
-    return res.json({ success: true, status: 'expired' });
+    return res.json({ status: 'expired' });
   }
   
   try {
@@ -104,26 +112,22 @@ app.get('/api/check-payment/:orderId', async (req, res) => {
       order.status = 'paid';
       order.paidAt = new Date().toISOString();
       await setDB(db.products, db.orders, db.sha);
-      
-      // Kirim notifikasi Telegram via polling backup
       await sendTelegramNotification(order, 'polling');
-      
-      return res.json({ success: true, status: 'paid', productCode: order.productCode });
+      return res.json({ status: 'paid', productCode: order.productCode });
     }
-    
-    res.json({ success: true, status: 'pending' });
+    res.json({ status: 'pending' });
   } catch (err) {
-    console.error('Check payment error:', err);
-    res.json({ success: true, status: 'pending' });
+    res.json({ status: 'pending' });
   }
 });
 
-// ========== API LAINNYA ==========
+// ========== API PRODUK ==========
 app.get('/api/products', async (req, res) => {
   const db = await getDB();
   res.json({ success: true, products: db.products });
 });
 
+// ========== API BUAT ORDER ==========
 app.post('/api/create-order', async (req, res) => {
   const { productId, customerName, customerEmail, qrisId, qrisImage, totalAmount, expiredAt } = req.body;
   if (!productId || !customerName || !qrisId) {
@@ -155,10 +159,15 @@ app.post('/api/create-order', async (req, res) => {
   db.orders.unshift(newOrder);
   await setDB(db.products, db.orders, db.sha);
   
-  res.json({ success: true, orderId: newOrder.id, orderCode: orderCode });
+  res.json({ success: true, orderCode: orderCode });
 });
 
-// ========== ADMIN ==========
+// ========== ROUTING HALAMAN ==========
+app.get('/order/:code', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/order.html'));
+});
+
+// ========== ADMIN API ==========
 app.post('/api/admin/product', async (req, res) => {
   const { name, price, stock, itemCode, adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
