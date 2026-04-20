@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AutoOrder | Beli Digital</title>
+    <title>Yanto Store | Beli Digital</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -24,25 +24,116 @@
             max-width: 1200px;
             margin: 0 auto;
         }
+        /* Header dengan hamburger menu */
         .header {
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            border-radius: 60px;
+            padding: 12px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .header h1 {
-            font-size: 2rem;
+        .logo h1 {
+            font-size: 1.4rem;
             font-weight: 700;
             background: linear-gradient(135deg, #ffffff, #94a3f8);
             background-clip: text;
             -webkit-background-clip: text;
             color: transparent;
-            display: inline-flex;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .logo p {
+            font-size: 0.7rem;
+            color: #94a3b8;
+        }
+        .menu-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 40px;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+        .menu-btn:hover {
+            background: rgba(59, 130, 246, 0.5);
+        }
+        /* Sidebar Menu */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 280px;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(16px);
+            z-index: 1000;
+            transition: 0.3s ease;
+            padding: 80px 24px 24px;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: -5px 0 30px rgba(0, 0, 0, 0.5);
+        }
+        .sidebar.open {
+            right: 0;
+        }
+        .sidebar .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .sidebar .menu-item {
+            display: flex;
             align-items: center;
             gap: 12px;
+            padding: 14px 0;
+            color: white;
+            text-decoration: none;
+            font-size: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: 0.2s;
         }
-        .header p {
+        .sidebar .menu-item:hover {
+            color: #60a5fa;
+            padding-left: 8px;
+        }
+        .sidebar .menu-item i {
+            width: 24px;
+            font-size: 1.1rem;
+        }
+        .sidebar-title {
             color: #94a3b8;
-            margin-top: 8px;
-            font-size: 0.85rem;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 20px 0 10px;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        .overlay.show {
+            display: block;
         }
         .products-grid {
             display: grid;
@@ -127,7 +218,7 @@
             backdrop-filter: blur(8px);
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            z-index: 1100;
         }
         .modal-content {
             background: #0f172a;
@@ -206,7 +297,7 @@
             font-size: 0.85rem;
             opacity: 0;
             transition: 0.2s;
-            z-index: 1100;
+            z-index: 1200;
             color: white;
             display: flex;
             align-items: center;
@@ -225,21 +316,39 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        @media (max-width: 480px) {
+            .logo h1 { font-size: 1.1rem; }
+            .sidebar { width: 260px; }
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1>
-            <i class="fas fa-store"></i> AutoOrder Digital
-        </h1>
-        <p>Akun Roblox | Web | APK | DLL | Bayar pakai QRIS</p>
+        <div class="logo">
+            <h1><i class="fas fa-store"></i> Yanto Store</h1>
+            <p>AutoOrder Digital</p>
+        </div>
+        <button class="menu-btn" onclick="toggleMenu()">
+            <i class="fas fa-bars"></i>
+        </button>
     </div>
     <div class="products-grid" id="productsGrid">
         <div style="text-align:center; color:#64748b; grid-column:1/-1;">
             <i class="fas fa-spinner fa-pulse"></i> Memuat produk...
         </div>
     </div>
+</div>
+
+<!-- Sidebar Menu -->
+<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
+<div class="sidebar" id="sidebar">
+    <button class="close-btn" onclick="toggleMenu()"><i class="fas fa-times"></i></button>
+    <div class="sidebar-title">MENU</div>
+    <a href="/" class="menu-item"><i class="fas fa-home"></i> Beranda</a>
+    <div class="sidebar-title">BANTUAN</div>
+    <a href="https://t.me/Yantoidiotbruh" target="_blank" class="menu-item"><i class="fab fa-telegram-plane"></i> Telegram</a>
+    <a href="https://wa.me/6289676041776" target="_blank" class="menu-item"><i class="fab fa-whatsapp"></i> WhatsApp</a>
 </div>
 
 <div id="modal" class="modal">
@@ -266,6 +375,13 @@
     const QRISPY_TOKEN = 'cki_IBpAYezwDHbfrMuENZMFvFw5mI94M11dAT146N0Ar4HrOWKi';
     const QRISPY_API_URL = 'https://api.qrispy.id';
     let currentProduct = null;
+
+    function toggleMenu() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('show');
+    }
 
     function toast(msg, isError = false) {
         const t = document.getElementById('toast');
