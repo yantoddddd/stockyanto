@@ -26,6 +26,7 @@ async function getDB() {
     const content = Buffer.from(data.content, 'base64').toString('utf8');
     return { ...JSON.parse(content), sha: data.sha };
   } catch (err) {
+    console.error('GetDB error:', err);
     return { products: [], orders: [], sha: null };
   }
 }
@@ -50,6 +51,45 @@ app.post('/api/admin/reset-orders', async (req, res) => {
   
   const db = await getDB();
   db.orders = [];
+  await setDB(db.products, db.orders, db.sha);
+  res.json({ success: true });
+});
+
+// ========== GET PRODUCT BY ID (untuk edit) ==========
+app.get('/api/admin/product/:id', async (req, res) => {
+  const { adminKey } = req.query;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const db = await getDB();
+  const product = db.products.find(p => p.id == req.params.id);
+  if (!product) return res.status(404).json({ error: 'Product not found' });
+  
+  res.json({ success: true, product });
+});
+
+// ========== UPDATE PRODUCT ==========
+app.put('/api/admin/product/:id', async (req, res) => {
+  const { adminKey, name, description, price, stock, itemType, itemContent, bonusType, bonusContent } = req.body;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  if (!name || !itemContent || price <= 0) return res.status(400).json({ error: 'Invalid data' });
+  
+  const db = await getDB();
+  const index = db.products.findIndex(p => p.id == req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'Product not found' });
+  
+  db.products[index] = {
+    ...db.products[index],
+    name,
+    description: description || '',
+    price: parseInt(price),
+    stock: parseInt(stock) || 1,
+    itemType: itemType || 'text',
+    itemContent,
+    bonusType: bonusType || 'none',
+    bonusContent: bonusContent || '',
+    updatedAt: new Date().toISOString()
+  };
+  
   await setDB(db.products, db.orders, db.sha);
   res.json({ success: true });
 });
@@ -107,11 +147,12 @@ app.get('/api/check-payment/:orderCode', async (req, res) => {
     }
     res.json({ status: 'pending' });
   } catch (err) {
+    console.error('Check payment error:', err);
     res.json({ status: 'pending' });
   }
 });
 
-// ========== API PRODUK ==========
+// ========== API PRODUK (untuk customer) ==========
 app.get('/api/products', async (req, res) => {
   const db = await getDB();
   res.json({ success: true, products: db.products });
@@ -153,10 +194,12 @@ app.post('/api/create-order', async (req, res) => {
 });
 
 // ========== ADMIN API ==========
+// Tambah produk
 app.post('/api/admin/product', async (req, res) => {
   const { name, description, price, stock, itemType, itemContent, bonusType, bonusContent, adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   if (!name || !itemContent || price <= 0) return res.status(400).json({ error: 'Invalid data' });
+  
   const db = await getDB();
   db.products.push({
     id: Date.now(),
@@ -174,25 +217,31 @@ app.post('/api/admin/product', async (req, res) => {
   res.json({ success: true });
 });
 
+// Hapus produk
 app.delete('/api/admin/product/:id', async (req, res) => {
   const { adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  
   const db = await getDB();
   db.products = db.products.filter(p => p.id != req.params.id);
   await setDB(db.products, db.orders, db.sha);
   res.json({ success: true });
 });
 
+// Lihat semua order (admin)
 app.get('/api/admin/orders', async (req, res) => {
   const { adminKey } = req.query;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  
   const db = await getDB();
   res.json({ success: true, orders: db.orders });
 });
 
+// Lihat semua produk (admin)
 app.get('/api/admin/products', async (req, res) => {
   const { adminKey } = req.query;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  
   const db = await getDB();
   res.json({ success: true, products: db.products });
 });
@@ -200,6 +249,11 @@ app.get('/api/admin/products', async (req, res) => {
 // ========== ROUTING HALAMAN ==========
 app.get('/order/:code', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/order.html'));
+});
+
+// ========== HEALTH CHECK ==========
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
 module.exports = app;
