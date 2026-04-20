@@ -3,7 +3,7 @@
     {
       "id": 1776681257269,
       "name": "WEB QRIS DINAMIS",
-      "description": "Qris dinamis: qris sementara\n\nBonus pembelian: apk qris no ktp",
+      "description": "Qris dinamis: qris sementara",
       "price": 1000,
       "stock": 997,
       "itemType": "link",
@@ -11,9 +11,9 @@
       "bonusType": "text",
       "bonusContent": "- ZevalDigital\n- Nexapay\n- Davpay",
       "createdAt": "2026-04-20T10:34:17.269Z",
-      "updatedAt": "2026-04-20T15:55:08.970Z"
+      "updatedAt": "2026-04-20T15:55:59.441Z"
     }
   ],
   "orders": [],
-  "updatedAt": "2026-04-20T15:55:08.970Z"
+  "updatedAt": "2026-04-20T15:55:59.441Z"
 }
