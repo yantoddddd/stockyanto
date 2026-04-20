@@ -7,22 +7,144 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-        body{background:linear-gradient(135deg,#0a2b5e,#0f3b7a);font-family:'Inter',sans-serif;padding:24px;}
-        .container{max-width:1000px;margin:0 auto;}
-        .card{background:rgba(255,255,255,0.08);backdrop-filter:blur(12px);border-radius:32px;padding:28px;margin-bottom:28px;border:1px solid rgba(255,255,255,0.05);}
-        h1,h2{color:white;margin-bottom:20px;display:flex;align-items:center;gap:12px;}
-        h1{font-size:1.6rem;}
-        h2{font-size:1.2rem;border-left:3px solid #3b82f6;padding-left:16px;}
-        input,textarea,select{width:100%;padding:12px;margin:10px 0;border-radius:24px;border:1px solid #334155;background:#1e293b;color:white;outline:none;}
-        button{background:#3b82f6;border:none;padding:12px 24px;border-radius:40px;color:white;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;}
-        .btn-danger{background:#b91c1c;}
-        .btn-danger:hover{background:#991b1b;}
-        .item{background:#1e293b;padding:16px;border-radius:20px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;}
-        .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;padding:10px20px;border-radius:40px;opacity:0;transition:0.2s;color:white;z-index:1000;}
-        .hidden{display:none;}
-        .reset-btn{background:#ef4444;margin-top:20px;}
-        .reset-btn:hover{background:#dc2626;}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            font-family: 'Inter', sans-serif;
+            padding: 24px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(12px);
+            border-radius: 32px;
+            padding: 28px;
+            margin-bottom: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        h1, h2 {
+            color: white;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        h1 {
+            font-size: 1.5rem;
+        }
+        h2 {
+            font-size: 1.2rem;
+            border-left: 3px solid #3b82f6;
+            padding-left: 16px;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            margin: 10px 0;
+            border-radius: 28px;
+            border: 1px solid #334155;
+            background: #1e293b;
+            color: white;
+            font-size: 0.85rem;
+            outline: none;
+            transition: 0.2s;
+        }
+        input:focus, textarea:focus, select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+        }
+        button {
+            background: #3b82f6;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .btn-danger {
+            background: #b91c1c;
+        }
+        .btn-danger:hover {
+            background: #991b1b;
+        }
+        .reset-btn {
+            background: #ef4444;
+            margin-top: 20px;
+            width: 100%;
+            justify-content: center;
+        }
+        .reset-btn:hover {
+            background: #dc2626;
+        }
+        .item {
+            background: #1e293b;
+            padding: 16px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .item-info {
+            flex: 1;
+        }
+        .item-name {
+            font-weight: 600;
+            color: white;
+            margin-bottom: 4px;
+        }
+        .item-detail {
+            font-size: 0.7rem;
+            color: #94a3b8;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            opacity: 0;
+            transition: 0.2s;
+            color: white;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .hidden {
+            display: none;
+        }
+        .form-group {
+            margin-bottom: 8px;
+        }
+        label {
+            color: #94a3b8;
+            font-size: 0.7rem;
+            margin-bottom: 4px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -39,33 +161,44 @@
             <textarea id="productDesc" rows="2" placeholder="Deskripsi Produk (opsional)"></textarea>
             <input type="number" id="productPrice" placeholder="Harga">
             <input type="number" id="productStock" placeholder="Stok">
-            <select id="itemType">
-                <option value="text">Teks (copy-paste)</option>
-                <option value="link">Link</option>
-            </select>
+            
+            <div class="form-group">
+                <label>Tipe Item</label>
+                <select id="itemType">
+                    <option value="text">Teks (copy-paste)</option>
+                    <option value="link">Link</option>
+                </select>
+            </div>
             <div id="itemTextField">
                 <textarea id="itemText" rows="3" placeholder="Kode/teks yang akan diberikan ke customer"></textarea>
             </div>
             <div id="itemLinkField" class="hidden">
                 <input type="url" id="itemLink" placeholder="https://...">
             </div>
-            <select id="bonusType">
-                <option value="none">Tidak ada bonus</option>
-                <option value="text">Bonus Teks</option>
-                <option value="link">Bonus Link</option>
-            </select>
+            
+            <div class="form-group">
+                <label>Bonus (opsional)</label>
+                <select id="bonusType">
+                    <option value="none">Tidak ada bonus</option>
+                    <option value="text">Bonus Teks</option>
+                    <option value="link">Bonus Link</option>
+                </select>
+            </div>
             <div id="bonusTextField" class="hidden">
                 <textarea id="bonusText" rows="2" placeholder="Teks bonus"></textarea>
             </div>
             <div id="bonusLinkField" class="hidden">
                 <input type="url" id="bonusLink" placeholder="https://...">
             </div>
+            
             <button onclick="addProduct()"><i class="fas fa-save"></i> Simpan Produk</button>
         </div>
+        
         <div class="card">
             <h2><i class="fas fa-boxes"></i> Daftar Produk</h2>
             <div id="productsList"></div>
         </div>
+        
         <div class="card">
             <h2><i class="fas fa-history"></i> Riwayat Order</h2>
             <div id="ordersList"></div>
@@ -80,7 +213,7 @@ let adminKey = '';
 
 function toast(msg, isError = false) {
     const t = document.getElementById('toast');
-    t.textContent = msg;
+    t.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> ${msg}`;
     t.style.background = isError ? '#b91c1c' : '#1e293b';
     t.style.opacity = '1';
     setTimeout(() => t.style.opacity = '0', 3000);
@@ -168,17 +301,20 @@ async function loadProducts() {
     if (data.success && data.products.length) {
         container.innerHTML = data.products.map(p => `
             <div class="item">
-                <div><strong>${p.name}</strong> - Rp ${p.price.toLocaleString()} - Stok: ${p.stock}</div>
+                <div class="item-info">
+                    <div class="item-name">${escapeHtml(p.name)}</div>
+                    <div class="item-detail">Rp ${p.price.toLocaleString()} | Stok: ${p.stock}</div>
+                </div>
                 <button onclick="deleteProduct(${p.id})" style="background:#b91c1c;"><i class="fas fa-trash"></i> Hapus</button>
             </div>
         `).join('');
     } else {
-        container.innerHTML = '<p>Belum ada produk</p>';
+        container.innerHTML = '<div style="text-align:center; color:#64748b;"><i class="fas fa-inbox"></i> Belum ada produk</div>';
     }
 }
 
 async function deleteProduct(id) {
-    if (confirm('Hapus produk?')) {
+    if (confirm('Hapus produk ini?')) {
         await fetch(`/api/admin/product/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminKey }) });
         loadProducts();
     }
@@ -191,15 +327,15 @@ async function loadOrders() {
     if (data.success && data.orders.length) {
         container.innerHTML = data.orders.map(o => `
             <div class="item">
-                <div>
-                    <strong>${o.productName}</strong> - ${o.customerName}<br>
-                    Status: ${o.status === 'paid' ? '✅ Lunas' : (o.status === 'pending' ? '⏳ Pending' : '❌ Batal')}
-                    <br><small>${new Date(o.createdAt).toLocaleString()}</small>
+                <div class="item-info">
+                    <div class="item-name">${escapeHtml(o.productName)}</div>
+                    <div class="item-detail">${escapeHtml(o.customerName)} | Status: ${o.status === 'paid' ? '✅ Lunas' : (o.status === 'pending' ? '⏳ Pending' : '❌ Batal')}</div>
+                    <div class="item-detail" style="font-size:0.6rem;">${new Date(o.createdAt).toLocaleString()}</div>
                 </div>
             </div>
         `).join('');
     } else {
-        container.innerHTML = '<p>Belum ada order</p>';
+        container.innerHTML = '<div style="text-align:center; color:#64748b;"><i class="fas fa-inbox"></i> Belum ada order</div>';
     }
 }
 
@@ -217,6 +353,11 @@ async function resetOrders() {
             toast('Gagal reset order', true);
         }
     }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
 }
 
 toggleItemFields();
