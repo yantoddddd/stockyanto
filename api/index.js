@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
-const path = require('path');
 
 const app = express();
 app.use(cors());
@@ -11,10 +10,6 @@ app.use(express.static('public'));
 const ADMIN_KEY = 'rahasia123';
 const QRISPY_TOKEN = 'cki_IBpAYezwDHbfrMuENZMFvFw5mI94M11dAT146N0Ar4HrOWKi';
 const QRISPY_API_URL = 'https://api.qrispy.id';
-
-// Telegram Config
-const TELEGRAM_BOT_TOKEN = '8622926718:AAFgjPx774euFGn3NFdekbMfF9NyJgBNUWs';
-const TELEGRAM_CHAT_ID = '-5260518165';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO || 'yantoddddd/stockyanto';
@@ -47,28 +42,7 @@ async function setDB(products, orders, oldSha) {
   return data.content.sha;
 }
 
-async function sendTelegramNotification(order, source = 'webhook') {
-  try {
-    const message = `
-✅ *PEMBAYARAN BERHASIL!* (via ${source})
-
-📦 *Produk:* ${order.productName}
-👤 *Pembeli:* ${order.customerName}
-💰 *Total:* Rp ${order.totalAmount.toLocaleString()}
-🆔 *Order ID:* ${order.orderCode}
-
-🔑 *Kode Item:* 
-${order.productCode}
-    `;
-    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' })
-    });
-  } catch (err) {}
-}
-
-// ========== API GET ORDER (untuk halaman order.html) ==========
+// ========== API GET ORDER ==========
 app.get('/api/get-order/:orderCode', async (req, res) => {
   const db = await getDB();
   const order = db.orders.find(o => o.orderCode === req.params.orderCode);
@@ -77,7 +51,7 @@ app.get('/api/get-order/:orderCode', async (req, res) => {
     success: true,
     status: order.status,
     productName: order.productName,
-    productCode: order.productCode,
+    productCode: order.productCode || 'Tidak ada kode',
     qrisImage: order.qrisImage,
     totalAmount: order.totalAmount,
     expiredAt: order.expiredAt
@@ -112,7 +86,6 @@ app.get('/api/check-payment/:orderCode', async (req, res) => {
       order.status = 'paid';
       order.paidAt = new Date().toISOString();
       await setDB(db.products, db.orders, db.sha);
-      await sendTelegramNotification(order, 'polling');
       return res.json({ status: 'paid', productCode: order.productCode });
     }
     res.json({ status: 'pending' });
@@ -146,7 +119,7 @@ app.post('/api/create-order', async (req, res) => {
     qrisId: qrisId,
     productId: product.id,
     productName: product.name,
-    productCode: product.itemCode,
+    productCode: product.itemContent,  // ✅ PASTIKAN INI ADA!
     price: product.price,
     totalAmount: totalAmount || product.price,
     customerName,
@@ -162,18 +135,24 @@ app.post('/api/create-order', async (req, res) => {
   res.json({ success: true, orderCode: orderCode });
 });
 
-// ========== ROUTING HALAMAN ==========
-app.get('/order/:code', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/order.html'));
-});
-
 // ========== ADMIN API ==========
 app.post('/api/admin/product', async (req, res) => {
-  const { name, price, stock, itemCode, adminKey } = req.body;
+  const { name, description, price, stock, itemType, itemContent, bonusType, bonusContent, adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  if (!name || !itemCode || price <= 0) return res.status(400).json({ error: 'Invalid data' });
+  if (!name || !itemContent || price <= 0) return res.status(400).json({ error: 'Invalid data' });
   const db = await getDB();
-  db.products.push({ id: Date.now(), name, price: parseInt(price), stock: parseInt(stock) || 1, itemCode, createdAt: new Date().toISOString() });
+  db.products.push({
+    id: Date.now(),
+    name,
+    description: description || '',
+    price: parseInt(price),
+    stock: parseInt(stock) || 1,
+    itemType: itemType || 'text',
+    itemContent: itemContent,
+    bonusType: bonusType || 'none',
+    bonusContent: bonusContent || '',
+    createdAt: new Date().toISOString()
+  });
   await setDB(db.products, db.orders, db.sha);
   res.json({ success: true });
 });
@@ -199,6 +178,12 @@ app.get('/api/admin/products', async (req, res) => {
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   const db = await getDB();
   res.json({ success: true, products: db.products });
+});
+
+// ========== ROUTING HALAMAN ==========
+const path = require('path');
+app.get('/order/:code', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/order.html'));
 });
 
 module.exports = app;
