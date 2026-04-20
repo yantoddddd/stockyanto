@@ -1,14 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
-const multer = require('multer');
-const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
-app.use('/uploads', express.static('uploads'));
 
 // ========== KONFIGURASI ==========
 const ADMIN_KEY = 'rahasia123';
@@ -18,20 +15,6 @@ const WEBHOOK_SECRET = 'whsec_jJfqxO5wpcbQQF7sMVURsJ7re3ofIVTX';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO || 'yantoddddd/stockyanto';
 const GITHUB_PATH = 'database.json';
-
-// ========== UPLOAD FILE (untuk item file) ==========
-const uploadDir = path.join(__dirname, '../uploads');
-const fs = require('fs');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, unique + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage });
 
 // ========== FUNGSI DATABASE ==========
 async function getDB() {
@@ -44,6 +27,7 @@ async function getDB() {
     const content = Buffer.from(data.content, 'base64').toString('utf8');
     return { ...JSON.parse(content), sha: data.sha };
   } catch (err) {
+    console.error('GetDB error:', err);
     return { products: [], orders: [], sha: null };
   }
 }
@@ -56,7 +40,10 @@ async function setDB(products, orders, oldSha) {
     headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ message: 'Update db', content: updatedContent, sha: oldSha })
   });
-  if (!res.ok) throw new Error('GitHub save failed');
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(`GitHub save failed: ${error}`);
+  }
   const data = await res.json();
   return data.content.sha;
 }
@@ -80,9 +67,9 @@ app.post('/api/webhook', (req, res) => {
         order.status = 'paid';
         order.paidAt = data.paid_at || new Date().toISOString();
         await setDB(db.products, db.orders, db.sha);
-        console.log(`Order ${order.id} paid`);
+        console.log(`Order ${order.id} paid via webhook`);
       }
-    } catch(e) {}
+    } catch(e) { console.error('Webhook error:', e); }
   })();
 });
 
@@ -135,11 +122,8 @@ app.get('/order/:code', async (req, res) => {
   }
 
   if (order.status === 'paid') {
-    // Generate tampilan item berdasarkan tipe
     let itemHtml = '';
-    if (order.itemType === 'file') {
-      itemHtml = `<a href="${order.itemContent}" class="download-btn" download><i class="fas fa-download"></i> Download File</a>`;
-    } else if (order.itemType === 'link') {
+    if (order.itemType === 'link') {
       itemHtml = `<a href="${order.itemContent}" class="download-btn" target="_blank"><i class="fas fa-external-link-alt"></i> Buka Link</a>`;
     } else {
       itemHtml = `<div class="code-box">${escapeHtml(order.itemContent)}<br><button class="copy-btn" onclick="copyText()"><i class="far fa-copy"></i> Salin Teks</button></div>`;
@@ -147,11 +131,9 @@ app.get('/order/:code', async (req, res) => {
     
     let bonusHtml = '';
     if (order.bonusContent && order.bonusContent !== '') {
-      if (order.bonusType === 'file') {
-        bonusHtml = `<div class="bonus-box"><strong><i class="fas fa-gift"></i> Bonus:</strong><br><a href="${order.bonusContent}" download><i class="fas fa-download"></i> Download Bonus</a></div>`;
-      } else if (order.bonusType === 'link') {
+      if (order.bonusType === 'link') {
         bonusHtml = `<div class="bonus-box"><strong><i class="fas fa-gift"></i> Bonus:</strong><br><a href="${order.bonusContent}" target="_blank"><i class="fas fa-external-link-alt"></i> Buka Link Bonus</a></div>`;
-      } else if (order.bonusContent) {
+      } else {
         bonusHtml = `<div class="bonus-box"><strong><i class="fas fa-gift"></i> Bonus:</strong><br>${escapeHtml(order.bonusContent)}</div>`;
       }
     }
@@ -188,7 +170,7 @@ app.get('/order/:code', async (req, res) => {
           <div style="font-weight:600; margin-top:15px;">📦 Barang Digital:</div>
           ${itemHtml}
           ${bonusHtml}
-          <div class="info"><i class="fas fa-save"></i> Simpan kode/download file di atas. Halaman ini tidak akan berubah meskipun di-refresh.</div>
+          <div class="info"><i class="fas fa-save"></i> Simpan kode di atas. Halaman ini tidak akan berubah meskipun di-refresh.</div>
         </div>
         <script>
           function copyText() {
@@ -271,33 +253,12 @@ app.get('/api/products', async (req, res) => {
   res.json({ success: true, products: db.products });
 });
 
-// ========== API ADMIN ==========
-app.post('/api/admin/product', upload.fields([{ name: 'itemFile' }, { name: 'bonusFile' }]), async (req, res) => {
-  const { name, description, price, stock, itemType, itemText, itemLink, bonusType, bonusText, bonusLink, adminKey } = req.body;
+// ========== API ADMIN (Tanpa upload file) ==========
+app.post('/api/admin/product', async (req, res) => {
+  const { name, description, price, stock, itemType, itemContent, bonusType, bonusContent, adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   if (!name || !price || price <= 0) return res.status(400).json({ error: 'Nama dan harga wajib' });
-
-  // Proses item
-  let itemContent = '';
-  if (itemType === 'file' && req.files['itemFile']) {
-    itemContent = `/uploads/${req.files['itemFile'][0].filename}`;
-  } else if (itemType === 'link') {
-    itemContent = itemLink;
-  } else {
-    itemContent = itemText;
-  }
-
-  // Proses bonus
-  let bonusContent = '';
-  if (bonusType && bonusType !== 'none') {
-    if (bonusType === 'file' && req.files['bonusFile']) {
-      bonusContent = `/uploads/${req.files['bonusFile'][0].filename}`;
-    } else if (bonusType === 'link') {
-      bonusContent = bonusLink;
-    } else if (bonusType === 'text') {
-      bonusContent = bonusText;
-    }
-  }
+  if (!itemContent && itemType !== 'none') return res.status(400).json({ error: 'Konten item wajib diisi' });
 
   const db = await getDB();
   db.products.push({
@@ -307,9 +268,9 @@ app.post('/api/admin/product', upload.fields([{ name: 'itemFile' }, { name: 'bon
     price: parseInt(price),
     stock: parseInt(stock) || 1,
     itemType: itemType || 'text',
-    itemContent: itemContent,
+    itemContent: itemContent || '',
     bonusType: bonusType || 'none',
-    bonusContent: bonusContent,
+    bonusContent: bonusContent || '',
     createdAt: new Date().toISOString()
   });
   await setDB(db.products, db.orders, db.sha);
