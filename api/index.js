@@ -44,26 +44,70 @@ async function setDB(products, orders, oldSha) {
   return data.content.sha;
 }
 
-// ========== RESET ORDER (HAPUS SEMUA ORDER) ==========
+// ========== AUTO DELETE CANCELLED & EXPIRED ORDERS ==========
+async function cleanupOrders() {
+  console.log('🧹 Menjalankan cleanup orders...');
+  const db = await getDB();
+  let deletedCount = 0;
+  const now = new Date();
+  const ordersToKeep = [];
+  
+  for (const order of db.orders) {
+    let shouldKeep = true;
+    
+    // Hapus order cancelled setelah 5 menit
+    if (order.status === 'cancelled' && order.cancelledAt) {
+      const cancelledTime = new Date(order.cancelledAt);
+      const diffMinutes = (now - cancelledTime) / (1000 * 60);
+      if (diffMinutes >= 5) {
+        shouldKeep = false;
+        deletedCount++;
+        console.log(`🗑️ Hapus order cancelled: ${order.orderCode}`);
+      }
+    }
+    
+    // Hapus order expired setelah 5 menit
+    if (order.status === 'expired') {
+      const expiredTime = new Date(order.expiredAt);
+      const diffMinutes = (now - expiredTime) / (1000 * 60);
+      if (diffMinutes >= 5) {
+        shouldKeep = false;
+        deletedCount++;
+        console.log(`🗑️ Hapus order expired: ${order.orderCode}`);
+      }
+    }
+    
+    if (shouldKeep) ordersToKeep.push(order);
+  }
+  
+  if (deletedCount > 0) {
+    db.orders = ordersToKeep;
+    await setDB(db.products, db.orders, db.sha);
+    console.log(`✅ Cleanup selesai, ${deletedCount} order dihapus`);
+  }
+}
+
+// Jalankan cleanup setiap 1 menit
+setInterval(cleanupOrders, 60 * 1000);
+cleanupOrders();
+
+// ========== RESET ORDER ==========
 app.post('/api/admin/reset-orders', async (req, res) => {
   const { adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  
   const db = await getDB();
   db.orders = [];
   await setDB(db.products, db.orders, db.sha);
   res.json({ success: true });
 });
 
-// ========== GET PRODUCT BY ID (untuk edit) ==========
+// ========== GET PRODUCT BY ID ==========
 app.get('/api/admin/product/:id', async (req, res) => {
   const { adminKey } = req.query;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  
   const db = await getDB();
   const product = db.products.find(p => p.id == req.params.id);
   if (!product) return res.status(404).json({ error: 'Product not found' });
-  
   res.json({ success: true, product });
 });
 
@@ -72,11 +116,9 @@ app.put('/api/admin/product/:id', async (req, res) => {
   const { adminKey, name, description, price, stock, itemType, itemContent, bonusType, bonusContent } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   if (!name || !itemContent || price <= 0) return res.status(400).json({ error: 'Invalid data' });
-  
   const db = await getDB();
   const index = db.products.findIndex(p => p.id == req.params.id);
   if (index === -1) return res.status(404).json({ error: 'Product not found' });
-  
   db.products[index] = {
     ...db.products[index],
     name,
@@ -89,20 +131,17 @@ app.put('/api/admin/product/:id', async (req, res) => {
     bonusContent: bonusContent || '',
     updatedAt: new Date().toISOString()
   };
-  
   await setDB(db.products, db.orders, db.sha);
   res.json({ success: true });
 });
 
-// ========== API GET ORDER (dengan bonus) ==========
+// ========== API GET ORDER ==========
 app.get('/api/get-order/:orderCode', async (req, res) => {
   const db = await getDB();
   const order = db.orders.find(o => o.orderCode === req.params.orderCode);
   if (!order) return res.json({ success: false });
-  
   const product = db.products.find(p => p.id == order.productId);
   const bonusContent = product?.bonusContent || '';
-  
   res.json({
     success: true,
     status: order.status,
@@ -115,7 +154,7 @@ app.get('/api/get-order/:orderCode', async (req, res) => {
   });
 });
 
-// ========== CEK STATUS PEMBAYARAN (POLLING) ==========
+// ========== CEK STATUS PEMBAYARAN ==========
 app.get('/api/check-payment/:orderCode', async (req, res) => {
   const db = await getDB();
   const order = db.orders.find(o => o.orderCode === req.params.orderCode);
@@ -147,12 +186,11 @@ app.get('/api/check-payment/:orderCode', async (req, res) => {
     }
     res.json({ status: 'pending' });
   } catch (err) {
-    console.error('Check payment error:', err);
     res.json({ status: 'pending' });
   }
 });
 
-// ========== API PRODUK (untuk customer) ==========
+// ========== API PRODUK ==========
 app.get('/api/products', async (req, res) => {
   const db = await getDB();
   res.json({ success: true, products: db.products });
@@ -193,13 +231,25 @@ app.post('/api/create-order', async (req, res) => {
   res.json({ success: true, orderCode: orderCode });
 });
 
+// ========== CANCEL ORDER ==========
+app.post('/api/cancel-order/:orderId', async (req, res) => {
+  const db = await getDB();
+  const order = db.orders.find(o => o.id == req.params.orderId || o.orderCode == req.params.orderId);
+  if (!order) return res.status(404).json({ error: 'Order tidak ditemukan' });
+  if (order.status !== 'pending') return res.status(400).json({ error: 'Order sudah diproses' });
+  
+  order.status = 'cancelled';
+  order.cancelledAt = new Date().toISOString();
+  await setDB(db.products, db.orders, db.sha);
+  
+  res.json({ success: true });
+});
+
 // ========== ADMIN API ==========
-// Tambah produk
 app.post('/api/admin/product', async (req, res) => {
   const { name, description, price, stock, itemType, itemContent, bonusType, bonusContent, adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   if (!name || !itemContent || price <= 0) return res.status(400).json({ error: 'Invalid data' });
-  
   const db = await getDB();
   db.products.push({
     id: Date.now(),
@@ -217,31 +267,25 @@ app.post('/api/admin/product', async (req, res) => {
   res.json({ success: true });
 });
 
-// Hapus produk
 app.delete('/api/admin/product/:id', async (req, res) => {
   const { adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  
   const db = await getDB();
   db.products = db.products.filter(p => p.id != req.params.id);
   await setDB(db.products, db.orders, db.sha);
   res.json({ success: true });
 });
 
-// Lihat semua order (admin)
 app.get('/api/admin/orders', async (req, res) => {
   const { adminKey } = req.query;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  
   const db = await getDB();
   res.json({ success: true, orders: db.orders });
 });
 
-// Lihat semua produk (admin)
 app.get('/api/admin/products', async (req, res) => {
   const { adminKey } = req.query;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  
   const db = await getDB();
   res.json({ success: true, products: db.products });
 });
