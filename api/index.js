@@ -43,13 +43,23 @@ async function setDB(products, orders, oldSha) {
   return data.content.sha;
 }
 
+// ========== RESET ORDER (HAPUS SEMUA ORDER) ==========
+app.post('/api/admin/reset-orders', async (req, res) => {
+  const { adminKey } = req.body;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const db = await getDB();
+  db.orders = [];
+  await setDB(db.products, db.orders, db.sha);
+  res.json({ success: true });
+});
+
 // ========== API GET ORDER (dengan bonus) ==========
 app.get('/api/get-order/:orderCode', async (req, res) => {
   const db = await getDB();
   const order = db.orders.find(o => o.orderCode === req.params.orderCode);
   if (!order) return res.json({ success: false });
   
-  // Ambil bonus dari produk
   const product = db.products.find(p => p.id == order.productId);
   const bonusContent = product?.bonusContent || '';
   
