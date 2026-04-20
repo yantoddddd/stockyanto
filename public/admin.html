@@ -65,7 +65,7 @@
         button {
             background: #3b82f6;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 40px;
             color: white;
             font-weight: 500;
@@ -74,6 +74,7 @@
             align-items: center;
             gap: 8px;
             transition: 0.2s;
+            font-size: 0.85rem;
         }
         button:hover {
             transform: translateY(-2px);
@@ -83,6 +84,12 @@
         }
         .btn-danger:hover {
             background: #991b1b;
+        }
+        .btn-warning {
+            background: #f59e0b;
+        }
+        .btn-warning:hover {
+            background: #d97706;
         }
         .reset-btn {
             background: #ef4444;
@@ -116,6 +123,10 @@
             font-size: 0.7rem;
             color: #94a3b8;
         }
+        .item-actions {
+            display: flex;
+            gap: 8px;
+        }
         .toast {
             position: fixed;
             bottom: 20px;
@@ -144,6 +155,46 @@
             font-size: 0.7rem;
             margin-bottom: 4px;
             display: block;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            justify-content: center;
+            align-items: center;
+            z-index: 1100;
+        }
+        .modal-content {
+            background: #0f172a;
+            border-radius: 32px;
+            padding: 28px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 1px solid #334155;
+        }
+        .modal-content h3 {
+            color: white;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .modal-buttons button {
+            flex: 1;
+            justify-content: center;
         }
     </style>
 </head>
@@ -206,10 +257,57 @@
         </div>
     </div>
 </div>
+
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <h3><i class="fas fa-edit"></i> Edit Produk</h3>
+        <input type="text" id="editProductId" style="display:none;">
+        <input type="text" id="editProductName" placeholder="Nama Produk">
+        <textarea id="editProductDesc" rows="2" placeholder="Deskripsi Produk"></textarea>
+        <input type="number" id="editProductPrice" placeholder="Harga">
+        <input type="number" id="editProductStock" placeholder="Stok">
+        
+        <div class="form-group">
+            <label>Tipe Item</label>
+            <select id="editItemType">
+                <option value="text">Teks (copy-paste)</option>
+                <option value="link">Link</option>
+            </select>
+        </div>
+        <div id="editItemTextField">
+            <textarea id="editItemText" rows="3" placeholder="Kode/teks"></textarea>
+        </div>
+        <div id="editItemLinkField" class="hidden">
+            <input type="url" id="editItemLink" placeholder="https://...">
+        </div>
+        
+        <div class="form-group">
+            <label>Bonus (opsional)</label>
+            <select id="editBonusType">
+                <option value="none">Tidak ada bonus</option>
+                <option value="text">Bonus Teks</option>
+                <option value="link">Bonus Link</option>
+            </select>
+        </div>
+        <div id="editBonusTextField" class="hidden">
+            <textarea id="editBonusText" rows="2" placeholder="Teks bonus"></textarea>
+        </div>
+        <div id="editBonusLinkField" class="hidden">
+            <input type="url" id="editBonusLink" placeholder="https://...">
+        </div>
+        
+        <div class="modal-buttons">
+            <button onclick="saveEditProduct()" style="background:#10b981;"><i class="fas fa-save"></i> Simpan</button>
+            <button onclick="closeEditModal()" style="background:#475569;"><i class="fas fa-times"></i> Batal</button>
+        </div>
+    </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
 let adminKey = '';
+let currentEditId = null;
 
 function toast(msg, isError = false) {
     const t = document.getElementById('toast');
@@ -233,6 +331,22 @@ function toggleBonusFields() {
     document.getElementById('bonusLinkField').classList.add('hidden');
     if (type === 'text') document.getElementById('bonusTextField').classList.remove('hidden');
     else if (type === 'link') document.getElementById('bonusLinkField').classList.remove('hidden');
+}
+
+function toggleEditItemFields() {
+    const type = document.getElementById('editItemType').value;
+    document.getElementById('editItemTextField').classList.add('hidden');
+    document.getElementById('editItemLinkField').classList.add('hidden');
+    if (type === 'text') document.getElementById('editItemTextField').classList.remove('hidden');
+    else if (type === 'link') document.getElementById('editItemLinkField').classList.remove('hidden');
+}
+
+function toggleEditBonusFields() {
+    const type = document.getElementById('editBonusType').value;
+    document.getElementById('editBonusTextField').classList.add('hidden');
+    document.getElementById('editBonusLinkField').classList.add('hidden');
+    if (type === 'text') document.getElementById('editBonusTextField').classList.remove('hidden');
+    else if (type === 'link') document.getElementById('editBonusLinkField').classList.remove('hidden');
 }
 
 async function login() {
@@ -303,9 +417,13 @@ async function loadProducts() {
             <div class="item">
                 <div class="item-info">
                     <div class="item-name">${escapeHtml(p.name)}</div>
-                    <div class="item-detail">Rp ${p.price.toLocaleString()} | Stok: ${p.stock}</div>
+                    <div class="item-detail">Rp ${p.price.toLocaleString()} | Stok: ${p.stock} | Tipe: ${p.itemType}</div>
+                    <div class="item-detail" style="font-size:0.6rem;">Kode: ${escapeHtml(p.itemContent.substring(0, 50))}${p.itemContent.length > 50 ? '...' : ''}</div>
                 </div>
-                <button onclick="deleteProduct(${p.id})" style="background:#b91c1c;"><i class="fas fa-trash"></i> Hapus</button>
+                <div class="item-actions">
+                    <button class="btn-warning" onclick="openEditModal(${p.id})"><i class="fas fa-edit"></i> Edit</button>
+                    <button class="btn-danger" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i> Hapus</button>
+                </div>
             </div>
         `).join('');
     } else {
@@ -317,6 +435,82 @@ async function deleteProduct(id) {
     if (confirm('Hapus produk ini?')) {
         await fetch(`/api/admin/product/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminKey }) });
         loadProducts();
+    }
+}
+
+async function openEditModal(id) {
+    const res = await fetch(`/api/admin/product/${id}?adminKey=${adminKey}`);
+    const data = await res.json();
+    if (data.success && data.product) {
+        const p = data.product;
+        currentEditId = p.id;
+        document.getElementById('editProductId').value = p.id;
+        document.getElementById('editProductName').value = p.name;
+        document.getElementById('editProductDesc').value = p.description || '';
+        document.getElementById('editProductPrice').value = p.price;
+        document.getElementById('editProductStock').value = p.stock;
+        
+        document.getElementById('editItemType').value = p.itemType || 'text';
+        if (p.itemType === 'link') {
+            document.getElementById('editItemLink').value = p.itemContent;
+        } else {
+            document.getElementById('editItemText').value = p.itemContent;
+        }
+        
+        document.getElementById('editBonusType').value = p.bonusType || 'none';
+        if (p.bonusType === 'link') {
+            document.getElementById('editBonusLink').value = p.bonusContent || '';
+        } else if (p.bonusType === 'text') {
+            document.getElementById('editBonusText').value = p.bonusContent || '';
+        }
+        
+        toggleEditItemFields();
+        toggleEditBonusFields();
+        
+        document.getElementById('editModal').style.display = 'flex';
+    }
+}
+
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+    currentEditId = null;
+}
+
+async function saveEditProduct() {
+    const itemType = document.getElementById('editItemType').value;
+    let itemContent = '';
+    if (itemType === 'text') itemContent = document.getElementById('editItemText').value;
+    else if (itemType === 'link') itemContent = document.getElementById('editItemLink').value;
+    
+    if (!itemContent) { toast('Konten item wajib diisi', true); return; }
+    
+    const bonusType = document.getElementById('editBonusType').value;
+    let bonusContent = '';
+    if (bonusType === 'text') bonusContent = document.getElementById('editBonusText').value;
+    else if (bonusType === 'link') bonusContent = document.getElementById('editBonusLink').value;
+    
+    const res = await fetch(`/api/admin/product/${currentEditId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            adminKey: adminKey,
+            name: document.getElementById('editProductName').value,
+            description: document.getElementById('editProductDesc').value,
+            price: parseInt(document.getElementById('editProductPrice').value),
+            stock: parseInt(document.getElementById('editProductStock').value) || 1,
+            itemType: itemType,
+            itemContent: itemContent,
+            bonusType: bonusType,
+            bonusContent: bonusContent
+        })
+    });
+    
+    if (res.ok) {
+        toast('Produk berhasil diupdate');
+        closeEditModal();
+        loadProducts();
+    } else {
+        toast('Gagal update produk', true);
     }
 }
 
@@ -364,6 +558,8 @@ toggleItemFields();
 toggleBonusFields();
 document.getElementById('itemType').addEventListener('change', toggleItemFields);
 document.getElementById('bonusType').addEventListener('change', toggleBonusFields);
+document.getElementById('editItemType').addEventListener('change', toggleEditItemFields);
+document.getElementById('editBonusType').addEventListener('change', toggleEditBonusFields);
 </script>
 </body>
 </html>
