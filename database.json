@@ -1,4 +1,14 @@
 {
-  "products": [],
-  "orders": []
+  "products": [
+    {
+      "id": 1776674356795,
+      "name": "yanto-pay",
+      "price": 20000,
+      "stock": 45,
+      "itemCode": "417417171741741",
+      "createdAt": "2026-04-20T08:39:16.795Z"
+    }
+  ],
+  "orders": [],
+  "updatedAt": "2026-04-20T08:39:16.795Z"
 }
