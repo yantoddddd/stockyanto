@@ -1,11 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const crypto = require('crypto');
+const multer = require('multer');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+app.use('/uploads', express.static('uploads'));
 
 // ========== KONFIGURASI ==========
 const ADMIN_KEY = 'rahasia123';
@@ -15,6 +18,20 @@ const WEBHOOK_SECRET = 'whsec_jJfqxO5wpcbQQF7sMVURsJ7re3ofIVTX';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO || 'yantoddddd/stockyanto';
 const GITHUB_PATH = 'database.json';
+
+// ========== UPLOAD FILE (untuk item file) ==========
+const uploadDir = path.join(__dirname, '../uploads');
+const fs = require('fs');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, unique + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
 
 // ========== FUNGSI DATABASE ==========
 async function getDB() {
@@ -63,7 +80,7 @@ app.post('/api/webhook', (req, res) => {
         order.status = 'paid';
         order.paidAt = data.paid_at || new Date().toISOString();
         await setDB(db.products, db.orders, db.sha);
-        console.log(`Order ${order.id} paid via webhook`);
+        console.log(`Order ${order.id} paid`);
       }
     } catch(e) {}
   })();
@@ -72,7 +89,6 @@ app.post('/api/webhook', (req, res) => {
 // ========== API: BUAT ORDER ==========
 app.post('/api/create-order', async (req, res) => {
   const { productId, customerName, customerEmail, qrisId, qrisImage, totalAmount, expiredAt } = req.body;
-  
   if (!productId || !customerName || !qrisId) {
     return res.status(400).json({ error: 'Data tidak lengkap' });
   }
@@ -90,7 +106,11 @@ app.post('/api/create-order', async (req, res) => {
     qrisId: qrisId,
     productId: product.id,
     productName: product.name,
-    productCode: product.itemCode,
+    productDescription: product.description || '',
+    itemType: product.itemType,
+    itemContent: product.itemContent,
+    bonusType: product.bonusType,
+    bonusContent: product.bonusContent,
     price: product.price,
     totalAmount: totalAmount || product.price,
     customerName,
@@ -103,10 +123,7 @@ app.post('/api/create-order', async (req, res) => {
   db.orders.unshift(newOrder);
   await setDB(db.products, db.orders, db.sha);
 
-  res.json({
-    success: true,
-    orderCode: orderCode
-  });
+  res.json({ success: true, orderCode: orderCode });
 });
 
 // ========== HALAMAN UNIK ORDER ==========
@@ -114,15 +131,31 @@ app.get('/order/:code', async (req, res) => {
   const db = await getDB();
   const order = db.orders.find(o => o.orderCode === req.params.code);
   if (!order) {
-    return res.status(404).send(`
-      <!DOCTYPE html>
-      <html><head><title>Order Not Found</title><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-      <style>body{background:#0a2b5e;color:white;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;text-align:center;}</style>
-      </head><body><div><h1>❌ Order Tidak Ditemukan</h1><p>Link tidak valid atau sudah kadaluarsa.</p></div></body></html>
-    `);
+    return res.status(404).send(`<!DOCTYPE html><html><head><title>Not Found</title><style>body{background:#0a2b5e;color:white;font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;}</style></head><body><div><h1>❌ Order Tidak Ditemukan</h1></div></body></html>`);
   }
 
   if (order.status === 'paid') {
+    // Generate tampilan item berdasarkan tipe
+    let itemHtml = '';
+    if (order.itemType === 'file') {
+      itemHtml = `<a href="${order.itemContent}" class="download-btn" download><i class="fas fa-download"></i> Download File</a>`;
+    } else if (order.itemType === 'link') {
+      itemHtml = `<a href="${order.itemContent}" class="download-btn" target="_blank"><i class="fas fa-external-link-alt"></i> Buka Link</a>`;
+    } else {
+      itemHtml = `<div class="code-box">${escapeHtml(order.itemContent)}<br><button class="copy-btn" onclick="copyText()"><i class="far fa-copy"></i> Salin Teks</button></div>`;
+    }
+    
+    let bonusHtml = '';
+    if (order.bonusContent && order.bonusContent !== '') {
+      if (order.bonusType === 'file') {
+        bonusHtml = `<div class="bonus-box"><strong><i class="fas fa-gift"></i> Bonus:</strong><br><a href="${order.bonusContent}" download><i class="fas fa-download"></i> Download Bonus</a></div>`;
+      } else if (order.bonusType === 'link') {
+        bonusHtml = `<div class="bonus-box"><strong><i class="fas fa-gift"></i> Bonus:</strong><br><a href="${order.bonusContent}" target="_blank"><i class="fas fa-external-link-alt"></i> Buka Link Bonus</a></div>`;
+      } else if (order.bonusContent) {
+        bonusHtml = `<div class="bonus-box"><strong><i class="fas fa-gift"></i> Bonus:</strong><br>${escapeHtml(order.bonusContent)}</div>`;
+      }
+    }
+
     res.send(`
       <!DOCTYPE html>
       <html lang="id">
@@ -135,27 +168,35 @@ app.get('/order/:code', async (req, res) => {
         <style>
           *{margin:0;padding:0;box-sizing:border-box;}
           body{background:linear-gradient(135deg,#0a2b5e,#0f3b7a);font-family:'Inter',sans-serif;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;}
-          .card{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:32px;padding:40px;max-width:500px;width:100%;text-align:center;border:1px solid rgba(255,255,255,0.2);}
-          h1{color:#10b981;margin-bottom:20px;font-size:2rem;}
-          .product-name{font-size:1.5rem;font-weight:700;margin:20px 0;}
-          .code-box{background:#0f172a;padding:20px;border-radius:20px;margin:20px 0;word-break:break-all;font-family:monospace;font-size:1rem;border-left:4px solid #10b981;}
-          .info{color:#94a3b8;font-size:0.8rem;margin-top:20px;}
+          .card{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:32px;padding:40px;max-width:550px;width:100%;border:1px solid rgba(255,255,255,0.2);}
+          h1{color:#10b981;margin-bottom:20px;font-size:2rem;text-align:center;}
+          .product-name{font-size:1.5rem;font-weight:700;margin:10px 0;color:white;}
+          .product-desc{color:#94a3b8;margin-bottom:20px;font-size:0.9rem;}
+          .code-box{background:#0f172a;padding:20px;border-radius:20px;margin:15px 0;word-break:break-all;font-family:monospace;font-size:0.9rem;border-left:4px solid #10b981;}
+          .bonus-box{background:#1e293b;padding:15px;border-radius:20px;margin:15px 0;border-left:4px solid #f59e0b;}
+          .download-btn{background:#3b82f6;display:inline-block;padding:12px 24px;border-radius:40px;color:white;text-decoration:none;margin:10px 0;font-weight:600;}
+          .copy-btn{background:#334155;border:none;padding:8px 16px;border-radius:40px;color:white;cursor:pointer;margin-top:10px;}
+          .info{color:#94a3b8;font-size:0.7rem;margin-top:20px;text-align:center;}
         </style>
       </head>
       <body>
         <div class="card">
-          <i class="fas fa-check-circle" style="font-size:4rem;color:#10b981;"></i>
+          <i class="fas fa-check-circle" style="font-size:4rem;color:#10b981;display:block;text-align:center;"></i>
           <h1>✅ Pembayaran Berhasil!</h1>
           <div class="product-name">${escapeHtml(order.productName)}</div>
-          <div class="code-box">
-            <i class="fas fa-gift"></i> <strong>Barang Digital Anda:</strong><br>
-            ${escapeHtml(order.productCode)}
-          </div>
-          <div class="info">
-            <i class="fas fa-save"></i> Simpan kode di atas.<br>
-            Kode ini tidak akan berubah meskipun halaman di-refresh.
-          </div>
+          <div class="product-desc">${escapeHtml(order.productDescription)}</div>
+          <div style="font-weight:600; margin-top:15px;">📦 Barang Digital:</div>
+          ${itemHtml}
+          ${bonusHtml}
+          <div class="info"><i class="fas fa-save"></i> Simpan kode/download file di atas. Halaman ini tidak akan berubah meskipun di-refresh.</div>
         </div>
+        <script>
+          function copyText() {
+            const text = document.querySelector('.code-box').innerText.replace('Salin Teks', '').trim();
+            navigator.clipboard.writeText(text);
+            alert('Teks disalin!');
+          }
+        </script>
       </body>
       </html>
     `);
@@ -172,10 +213,9 @@ app.get('/order/:code', async (req, res) => {
         <style>
           *{margin:0;padding:0;box-sizing:border-box;}
           body{background:linear-gradient(135deg,#0a2b5e,#0f3b7a);font-family:'Inter',sans-serif;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;}
-          .card{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:32px;padding:40px;max-width:500px;width:100%;text-align:center;border:1px solid rgba(255,255,255,0.2);}
+          .card{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:32px;padding:40px;max-width:500px;width:100%;text-align:center;}
           .qris-img{width:100%;max-width:250px;margin:20px auto;display:block;background:white;padding:16px;border-radius:24px;}
           .total{font-size:1.5rem;font-weight:800;color:#60a5fa;margin:10px 0;}
-          .status{color:#f59e0b;margin:10px 0;}
           .refresh-btn{background:#3b82f6;border:none;padding:12px 24px;border-radius:40px;color:white;font-weight:600;cursor:pointer;margin-top:20px;}
           .info{color:#94a3b8;font-size:0.7rem;margin-top:20px;}
         </style>
@@ -187,10 +227,7 @@ app.get('/order/:code', async (req, res) => {
           <div class="total">💰 Total: Rp ${order.totalAmount.toLocaleString()}</div>
           <div class="status" id="statusText">⏳ Menunggu pembayaran...</div>
           <button class="refresh-btn" onclick="checkStatus()"><i class="fas fa-sync-alt"></i> Cek Status</button>
-          <div class="info">
-            <i class="fas fa-clock"></i> Kadaluarsa: ${new Date(order.expiredAt).toLocaleString()}<br>
-            Setelah bayar, refresh halaman ini.
-          </div>
+          <div class="info"><i class="fas fa-clock"></i> Kadaluarsa: ${new Date(order.expiredAt).toLocaleString()}<br>Setelah bayar, refresh halaman ini.</div>
         </div>
         <script>
           const orderCode = '${order.orderCode}';
@@ -208,9 +245,7 @@ app.get('/order/:code', async (req, res) => {
               } else {
                 statusDiv.innerHTML = '⏳ Masih menunggu pembayaran.';
               }
-            } catch(e) {
-              statusDiv.innerHTML = '⚠️ Gagal mengecek';
-            }
+            } catch(e) {}
           }
           setInterval(checkStatus, 5000);
           checkStatus();
@@ -221,7 +256,6 @@ app.get('/order/:code', async (req, res) => {
   }
 });
 
-// ========== API CEK STATUS ORDER ==========
 app.get('/api/check-order/:code', async (req, res) => {
   const db = await getDB();
   const order = db.orders.find(o => o.orderCode === req.params.code);
@@ -238,12 +272,46 @@ app.get('/api/products', async (req, res) => {
 });
 
 // ========== API ADMIN ==========
-app.post('/api/admin/product', async (req, res) => {
-  const { name, price, stock, itemCode, adminKey } = req.body;
+app.post('/api/admin/product', upload.fields([{ name: 'itemFile' }, { name: 'bonusFile' }]), async (req, res) => {
+  const { name, description, price, stock, itemType, itemText, itemLink, bonusType, bonusText, bonusLink, adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  if (!name || !itemCode || price <= 0) return res.status(400).json({ error: 'Invalid data' });
+  if (!name || !price || price <= 0) return res.status(400).json({ error: 'Nama dan harga wajib' });
+
+  // Proses item
+  let itemContent = '';
+  if (itemType === 'file' && req.files['itemFile']) {
+    itemContent = `/uploads/${req.files['itemFile'][0].filename}`;
+  } else if (itemType === 'link') {
+    itemContent = itemLink;
+  } else {
+    itemContent = itemText;
+  }
+
+  // Proses bonus
+  let bonusContent = '';
+  if (bonusType && bonusType !== 'none') {
+    if (bonusType === 'file' && req.files['bonusFile']) {
+      bonusContent = `/uploads/${req.files['bonusFile'][0].filename}`;
+    } else if (bonusType === 'link') {
+      bonusContent = bonusLink;
+    } else if (bonusType === 'text') {
+      bonusContent = bonusText;
+    }
+  }
+
   const db = await getDB();
-  db.products.push({ id: Date.now(), name, price: parseInt(price), stock: parseInt(stock) || 1, itemCode, createdAt: new Date().toISOString() });
+  db.products.push({
+    id: Date.now(),
+    name,
+    description: description || '',
+    price: parseInt(price),
+    stock: parseInt(stock) || 1,
+    itemType: itemType || 'text',
+    itemContent: itemContent,
+    bonusType: bonusType || 'none',
+    bonusContent: bonusContent,
+    createdAt: new Date().toISOString()
+  });
   await setDB(db.products, db.orders, db.sha);
   res.json({ success: true });
 });
