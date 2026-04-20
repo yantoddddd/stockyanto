@@ -8,127 +8,26 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: linear-gradient(135deg, #0a2b5e 0%, #0f3b7a 100%);
-            font-family: 'Inter', 'Poppins', sans-serif;
-            min-height: 100vh;
-            padding: 24px 16px;
-        }
+        body { background: linear-gradient(135deg, #0a2b5e 0%, #0f3b7a 100%); font-family: 'Inter', 'Poppins', sans-serif; min-height: 100vh; padding: 24px 16px; }
         .container { max-width: 1200px; margin: 0 auto; }
         .header { text-align: center; margin-bottom: 40px; }
-        .header h1 {
-            font-size: 2.2rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #ffffff, #b8e1ff);
-            background-clip: text;
-            -webkit-background-clip: text;
-            color: transparent;
-            margin-bottom: 8px;
-        }
-        .header p { color: #cbd5e6; font-size: 0.95rem; }
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 24px;
-        }
-        .product-card {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(10px);
-            border-radius: 28px;
-            padding: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            transition: 0.3s;
-            cursor: pointer;
-        }
+        .header h1 { font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #ffffff, #b8e1ff); background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .header p { color: #cbd5e6; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+        .product-card { background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(10px); border-radius: 28px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.15); transition: 0.3s; cursor: pointer; }
         .product-card:hover { transform: translateY(-6px); background: rgba(255,255,255,0.12); }
         .product-name { font-size: 1.4rem; font-weight: 700; color: white; margin-bottom: 12px; }
         .product-price { font-size: 1.8rem; font-weight: 800; color: #60a5fa; margin: 12px 0; }
         .product-stock { font-size: 0.8rem; color: #9ca3af; margin-bottom: 20px; }
-        .btn-buy {
-            background: linear-gradient(95deg, #2563eb, #1d4ed8);
-            border: none;
-            width: 100%;
-            padding: 14px;
-            border-radius: 40px;
-            font-weight: 700;
-            color: white;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(8px);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background: #0f172a;
-            border-radius: 32px;
-            padding: 32px;
-            max-width: 500px;
-            width: 90%;
-            border: 1px solid #334155;
-        }
-        .modal-content h3 { font-size: 1.6rem; font-weight: 700; color: white; margin-bottom: 12px; }
-        .modal-price { font-size: 1.5rem; font-weight: 800; color: #60a5fa; margin-bottom: 20px; }
-        input {
-            width: 100%;
-            padding: 14px;
-            margin: 10px 0;
-            border-radius: 24px;
-            border: 1px solid #334155;
-            background: #1e293b;
-            color: white;
-            font-size: 1rem;
-            outline: none;
-        }
-        input:focus { border-color: #3b82f6; }
-        .btn-primary {
-            background: #3b82f6;
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 40px;
-            font-weight: 700;
-            color: white;
-            cursor: pointer;
-            margin-top: 12px;
-        }
-        .btn-secondary {
-            background: #334155;
-            width: 100%;
-            padding: 14px;
-            border: none;
-            border-radius: 40px;
-            font-weight: 600;
-            color: white;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1e293b;
-            padding: 12px 24px;
-            border-radius: 40px;
-            font-size: 0.9rem;
-            opacity: 0;
-            transition: 0.2s;
-            z-index: 1100;
-            color: white;
-        }
+        .btn-buy { background: linear-gradient(95deg, #2563eb, #1d4ed8); border: none; width: 100%; padding: 14px; border-radius: 40px; font-weight: 700; color: white; cursor: pointer; text-align: center; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #0f172a; border-radius: 32px; padding: 32px; max-width: 500px; width: 90%; border: 1px solid #334155; }
+        .modal-content h3 { font-size: 1.6rem; font-weight: 700; color: white; }
+        .modal-price { font-size: 1.5rem; font-weight: 800; color: #60a5fa; margin: 10px 0; }
+        input { width: 100%; padding: 14px; margin: 10px 0; border-radius: 24px; border: 1px solid #334155; background: #1e293b; color: white; font-size: 1rem; outline: none; }
+        .btn-primary { background: #3b82f6; width: 100%; padding: 14px; border: none; border-radius: 40px; font-weight: 700; color: white; cursor: pointer; margin-top: 12px; }
+        .btn-secondary { background: #334155; width: 100%; padding: 14px; border: none; border-radius: 40px; font-weight: 600; color: white; cursor: pointer; margin-top: 8px; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; padding: 12px 24px; border-radius: 40px; font-size: 0.9rem; opacity: 0; transition: 0.2s; z-index: 1100; color: white; }
         .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
@@ -156,6 +55,8 @@
 <div id="toast" class="toast"></div>
 
 <script>
+    const QRISPY_TOKEN = 'cki_IBpAYezwDHbfrMuENZMFvFw5mI94M11dAT146N0Ar4HrOWKi';
+    const QRISPY_API_URL = 'https://api.qrispy.id';
     let currentProduct = null;
 
     function toast(msg, isError = false) {
@@ -172,7 +73,7 @@
             const data = await res.json();
             const grid = document.getElementById('productsGrid');
             if (!data.products || data.products.length === 0) {
-                grid.innerHTML = '<div style="text-align:center; color:#cbd5e6; grid-column:1/-1;">Belum ada produk. Login admin untuk menambahkan.</div>';
+                grid.innerHTML = '<div style="text-align:center; color:#cbd5e6; grid-column:1/-1;">Belum ada produk.</div>';
                 return;
             }
             grid.innerHTML = data.products.map(p => `
@@ -214,26 +115,42 @@
         loading.style.display = 'block';
 
         try {
-            const res = await fetch('/api/create-order', {
+            // Hitung admin fee 2.5%
+            const adminFee = Math.round(currentProduct.price * 0.025);
+            const totalAmount = currentProduct.price + adminFee;
+
+            // 1. Generate QRIS dari frontend (biar ga kena blokir)
+            const qrisRes = await fetch(`${QRISPY_API_URL}/api/payment/qris/generate`, {
+                method: 'POST',
+                headers: { 'X-API-Token': QRISPY_TOKEN, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: totalAmount })
+            });
+            const qrisData = await qrisRes.json();
+            if (qrisData.status !== 'success') throw new Error(qrisData.message || 'Gagal generate QRIS');
+
+            // 2. Simpan order ke backend
+            const orderRes = await fetch('/api/create-order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     productId: currentProduct.id,
                     customerName: name,
-                    customerEmail: email
+                    customerEmail: email,
+                    qrisId: qrisData.data.qris_id,
+                    qrisImage: qrisData.data.qris_image_url,
+                    totalAmount: totalAmount,
+                    adminFee: adminFee,
+                    expiredAt: qrisData.data.expired_at
                 })
             });
-            const data = await res.json();
-            if (data.success) {
-                // Redirect ke halaman unik order
-                window.location.href = `/order/${data.orderCode}`;
+            const orderData = await orderRes.json();
+            if (orderData.success) {
+                window.location.href = `/order/${orderData.orderCode}`;
             } else {
-                toast(data.error || 'Gagal membuat pesanan', true);
-                btn.style.display = 'block';
-                loading.style.display = 'none';
+                throw new Error(orderData.error || 'Gagal simpan order');
             }
         } catch (err) {
-            toast('Error: ' + err.message, true);
+            toast(err.message, true);
             btn.style.display = 'block';
             loading.style.display = 'none';
         }
