@@ -9,9 +9,9 @@
       "itemType": "link",
       "itemContent": "https://qrispy.id",
       "bonusType": "text",
-      "bonusContent": "- ZevalDigital\n- Nexapay\n- Davpay",
+      "bonusContent": "APK QRIS: (NO KTP)\n- ZevalDigital\n- Nexapay\n- Davpay",
       "createdAt": "2026-04-20T10:34:17.269Z",
-      "updatedAt": "2026-04-20T16:00:28.971Z"
+      "updatedAt": "2026-04-21T16:56:08.363Z"
     },
     {
       "id": 1776700746939,
@@ -45,5 +45,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-21T16:55:09.913Z"
+  "updatedAt": "2026-04-21T16:56:08.363Z"
 }
