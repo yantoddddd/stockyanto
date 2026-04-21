@@ -107,7 +107,7 @@
             flex: 1;
             word-break: break-all;
         }
-        .item-content .text-content {
+        .text-content {
             color: #e2e8f0;
             font-size: 0.85rem;
             line-height: 1.5;
@@ -332,8 +332,19 @@
         }
         
         function copyToClipboard(text) {
-            navigator.clipboard.writeText(text);
-            toast('📋 Tersalin!');
+            try {
+                navigator.clipboard.writeText(text);
+                toast('📋 Tersalin!');
+            } catch(e) {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                toast('📋 Tersalin!');
+            }
         }
         
         function formatBonus(content) {
@@ -346,17 +357,18 @@
         
         function formatItem(content) {
             const isLink = content.startsWith('http');
+            const escapedContent = escapeHtml(content);
             if (isLink) {
                 return `
                     <div class="item-row">
                         <div class="item-content">
-                            <div class="text-content">${escapeHtml(content)}</div>
+                            <div class="text-content">${escapedContent}</div>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <button class="chip-btn" onclick="copyToClipboard('${escapeHtml(content).replace(/'/g, "\\'")}')">
+                            <button class="chip-btn" data-copy="${escapeHtml(content).replace(/&quot;/g, '"')}">
                                 <i class="fas fa-copy"></i> Salin Link
                             </button>
-                            <a href="${escapeHtml(content)}" class="chip-btn link-chip" target="_blank">
+                            <a href="${escapedContent}" class="chip-btn link-chip" target="_blank">
                                 <i class="fas fa-external-link-alt"></i> Buka
                             </a>
                         </div>
@@ -366,14 +378,23 @@
             return `
                 <div class="item-row">
                     <div class="item-content">
-                        <div class="text-content">${escapeHtml(content)}</div>
+                        <div class="text-content">${escapedContent}</div>
                     </div>
-                    <button class="chip-btn" onclick="copyToClipboard('${escapeHtml(content).replace(/'/g, "\\'")}')">
+                    <button class="chip-btn" data-copy="${escapedContent.replace(/&quot;/g, '"')}">
                         <i class="fas fa-copy"></i> Salin Teks
                     </button>
                 </div>
             `;
         }
+        
+        // Event delegation untuk tombol copy
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.chip-btn');
+            if (btn && btn.hasAttribute('data-copy')) {
+                const textToCopy = btn.getAttribute('data-copy');
+                copyToClipboard(textToCopy);
+            }
+        });
         
         async function cancelOrder() {
             if (!confirm('Batalkan pesanan ini?')) return;
@@ -384,10 +405,10 @@
                     toast('Pesanan dibatalkan');
                     setTimeout(() => location.reload(), 1500);
                 } else {
-                    toast('Gagal batalkan', true);
+                    toast('Gagal batalkan');
                 }
             } catch(e) {
-                toast('Error', true);
+                toast('Error');
             }
         }
         
