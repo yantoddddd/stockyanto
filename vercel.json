@@ -24,12 +24,12 @@
       "dest": "api/index.js"
     },
     {
-      "src": "/admin",
-      "dest": "public/admin.html"
-    },
-    {
       "src": "/order/(.*)",
       "dest": "public/order.html"
+    },
+    {
+      "src": "/admin",
+      "dest": "public/admin.html"
     },
     {
       "src": "/(.*)",
