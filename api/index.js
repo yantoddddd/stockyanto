@@ -52,29 +52,20 @@ async function cleanupOrders() {
   console.log('🧹 Menjalankan cleanup orders...');
   const db = await getDB();
   let deletedCount = 0;
-  const now = new Date();
   const ordersToKeep = [];
   
   for (const order of db.orders) {
     let shouldKeep = true;
     
-    // CANCELLED: LANGSUNG DIHAPUS (no jeda)
     if (order.status === 'cancelled') {
       shouldKeep = false;
       deletedCount++;
       console.log(`🗑️ Hapus order cancelled: ${order.orderCode}`);
-    }
-    
-    // EXPIRED: LANGSUNG DIHAPUS (no jeda)
-    else if (order.status === 'expired') {
+    } else if (order.status === 'expired') {
       shouldKeep = false;
       deletedCount++;
       console.log(`🗑️ Hapus order expired: ${order.orderCode}`);
     }
-    
-    // PENDING: tetap disimpan sampai expired (tidak dihapus)
-    // PAID: tetap disimpan (tidak dihapus)
-    // TEST: tetap disimpan
     
     if (shouldKeep) ordersToKeep.push(order);
   }
@@ -86,9 +77,22 @@ async function cleanupOrders() {
   }
 }
 
-// Jalankan cleanup setiap 30 detik (biar cepet)
 setInterval(cleanupOrders, 30 * 1000);
 cleanupOrders();
+
+// ========== DELETE SELECTED ORDERS ==========
+app.post('/api/admin/delete-selected-orders', async (req, res) => {
+  const { adminKey, orderIds } = req.body;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
+  if (!orderIds || !orderIds.length) return res.status(400).json({ error: 'Tidak ada order dipilih' });
+  
+  const db = await getDB();
+  const deletedCount = orderIds.length;
+  db.orders = db.orders.filter(o => !orderIds.includes(o.id.toString()));
+  await setDB(db.products, db.orders, db.sha);
+  
+  res.json({ success: true, deletedCount });
+});
 
 // ========== RESET ORDER (HAPUS HANYA PENDING & CANCELLED) ==========
 app.post('/api/admin/reset-orders', async (req, res) => {
@@ -115,7 +119,7 @@ app.post('/api/admin/reset-orders', async (req, res) => {
   res.json({ success: true, deletedCount, keptCount: paidOrders.length });
 });
 
-// ========== TEST ORDER (LANGSUNG SUCCESS, TIDAK PAKAI QRIS) ==========
+// ========== TEST ORDER (LANGSUNG TAMPILIN HTML, TIDAK DISIMPAN) ==========
 app.post('/api/admin/test-order', async (req, res) => {
   const { productId, adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
@@ -124,28 +128,139 @@ app.post('/api/admin/test-order', async (req, res) => {
   const product = db.products.find(p => p.id == productId);
   if (!product) return res.status(404).json({ error: 'Produk tidak ditemukan' });
   
-  const testOrderCode = crypto.randomBytes(16).toString('hex');
-  const testOrder = {
-    id: Date.now(),
-    orderCode: testOrderCode,
-    qrisId: `test-${Date.now()}`,
-    productId: product.id,
-    productName: product.name,
-    productCode: product.itemContent,
-    price: product.price,
-    totalAmount: product.price,
-    customerName: 'ADMIN_TEST',
-    customerEmail: '-',
-    status: 'paid',
-    qrisImage: '',
-    expiredAt: new Date(Date.now() + 15 * 60000).toISOString(),
-    createdAt: new Date().toISOString(),
-    paidAt: new Date().toISOString()
-  };
-  db.orders.unshift(testOrder);
-  await setDB(db.products, db.orders, db.sha);
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+  }
   
-  res.json({ success: true, orderCode: testOrderCode });
+  // Format bonus
+  let bonusHtml = '';
+  if (product.bonusContent && product.bonusContent !== '') {
+    if (product.bonusContent.includes('\n')) {
+      const items = product.bonusContent.split('\n').filter(item => item.trim());
+      bonusHtml = `
+        <div class="section">
+          <div class="section-title"><i class="fas fa-gift"></i> Bonus</div>
+          <ul class="bonus-list">${items.map(item => `<li><i class="fas fa-star"></i> ${escapeHtml(item.trim())}</li>`).join('')}</ul>
+        </div>
+      `;
+    } else {
+      bonusHtml = `
+        <div class="section">
+          <div class="section-title"><i class="fas fa-gift"></i> Bonus</div>
+          <div class="text-content">${escapeHtml(product.bonusContent)}</div>
+        </div>
+      `;
+    }
+  }
+  
+  // Format item
+  let itemHtml = '';
+  const isLink = product.itemContent.startsWith('http');
+  if (isLink) {
+    itemHtml = `
+      <div class="section">
+        <div class="section-title"><i class="fas fa-box"></i> Barang Utama</div>
+        <div class="item-row">
+          <div class="item-content">
+            <div class="text-content">${escapeHtml(product.itemContent)}</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="chip-btn" onclick="copyToClipboard('${escapeHtml(product.itemContent).replace(/'/g, "\\'")}')">
+              <i class="fas fa-copy"></i> Salin Link
+            </button>
+            <a href="${escapeHtml(product.itemContent)}" class="chip-btn link-chip" target="_blank">
+              <i class="fas fa-external-link-alt"></i> Buka
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    itemHtml = `
+      <div class="section">
+        <div class="section-title"><i class="fas fa-box"></i> Barang Utama</div>
+        <div class="item-row">
+          <div class="item-content">
+            <div class="text-content">${escapeHtml(product.itemContent)}</div>
+          </div>
+          <button class="chip-btn" onclick="copyToClipboard('${escapeHtml(product.itemContent).replace(/'/g, "\\'")}')">
+            <i class="fas fa-copy"></i> Salin Teks
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+        <title>Test Order | ${escapeHtml(product.name)}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+            body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; animation: fadeIn 0.5s ease; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+            @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+            .card { background: rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius: 32px; padding: 32px; max-width: 520px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 25px 45px rgba(0,0,0,0.3); }
+            .logo { text-align: center; margin-bottom: 20px; }
+            .logo h2 { font-size: 1.3rem; font-weight: 700; background: linear-gradient(135deg, #ffffff, #94a3f8); background-clip: text; -webkit-background-clip: text; color: transparent; }
+            .success-icon { text-align: center; margin-bottom: 20px; }
+            .success-icon i { font-size: 4rem; color: #10b981; animation: pulse 0.5s ease; }
+            h1 { text-align: center; color: #10b981; font-size: 1.5rem; font-weight: 700; margin-bottom: 20px; }
+            .product-name { font-size: 1.2rem; font-weight: 600; color: white; text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+            .section { background: rgba(0,0,0,0.3); border-radius: 20px; padding: 18px; margin-bottom: 16px; }
+            .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #60a5fa; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+            .item-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+            .item-content { flex: 1; word-break: break-all; }
+            .text-content { color: #e2e8f0; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; }
+            .chip-btn { background: #334155; border: none; padding: 6px 14px; border-radius: 40px; color: white; font-size: 0.7rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; white-space: nowrap; }
+            .chip-btn:hover { background: #3b82f6; transform: translateY(-2px); }
+            .link-chip { background: #3b82f6; text-decoration: none; }
+            .link-chip:hover { background: #2563eb; }
+            .bonus-list { list-style: none; }
+            .bonus-list li { color: #e2e8f0; font-size: 0.85rem; padding: 6px 0; display: flex; align-items: center; gap: 8px; }
+            .bonus-list li i { color: #f59e0b; font-size: 0.7rem; }
+            .footer-note { text-align: center; color: #475569; font-size: 0.65rem; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+            @media (max-width: 480px) { .item-row { flex-direction: column; align-items: flex-start; } .chip-btn { align-self: flex-start; } }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <div class="logo"><h2><i class="fas fa-store"></i> Yanto Store</h2></div>
+            <div class="success-icon"><i class="fas fa-check-circle"></i></div>
+            <h1>✅ TEST ORDER BERHASIL!</h1>
+            <div class="product-name">${escapeHtml(product.name)}</div>
+            ${itemHtml}
+            ${bonusHtml}
+            <div class="footer-note"><i class="fas fa-flask"></i> Ini adalah mode test - tidak mempengaruhi stok & database</div>
+        </div>
+        <script>
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text);
+                const toast = document.createElement('div');
+                toast.textContent = '📋 Tersalin!';
+                toast.style.position = 'fixed';
+                toast.style.bottom = '20px';
+                toast.style.left = '50%';
+                toast.style.transform = 'translateX(-50%)';
+                toast.style.background = '#1e293b';
+                toast.style.padding = '8px 16px';
+                toast.style.borderRadius = '40px';
+                toast.style.fontSize = '0.8rem';
+                toast.style.zIndex = '2000';
+                toast.style.color = 'white';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 1500);
+            }
+        </script>
+    </body>
+    </html>
+  `);
 });
 
 // ========== GET PRODUCT BY ID ==========
