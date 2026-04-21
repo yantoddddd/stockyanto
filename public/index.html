@@ -19,121 +19,40 @@
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
             padding: 24px 16px;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
         }
         .container {
             max-width: 1200px;
             margin: 0 auto;
         }
-        /* Header dengan hamburger menu */
         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            text-align: center;
             margin-bottom: 40px;
-            background: rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(12px);
-            border-radius: 60px;
-            padding: 12px 20px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            animation: fadeIn 0.5s ease 0.1s both;
         }
-        .logo h1 {
-            font-size: 1.4rem;
+        .header h1 {
+            font-size: 2rem;
             font-weight: 700;
             background: linear-gradient(135deg, #ffffff, #94a3f8);
             background-clip: text;
             -webkit-background-clip: text;
             color: transparent;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .logo p {
-            font-size: 0.7rem;
-            color: #94a3b8;
-        }
-        .menu-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            width: 44px;
-            height: 44px;
-            border-radius: 40px;
-            color: white;
-            font-size: 1.2rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s;
-        }
-        .menu-btn:hover {
-            background: rgba(59, 130, 246, 0.5);
-        }
-        /* Sidebar Menu */
-        .sidebar {
-            position: fixed;
-            top: 0;
-            right: -300px;
-            width: 280px;
-            height: 100%;
-            background: rgba(15, 23, 42, 0.98);
-            backdrop-filter: blur(16px);
-            z-index: 1000;
-            transition: 0.3s ease;
-            padding: 80px 24px 24px;
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: -5px 0 30px rgba(0, 0, 0, 0.5);
-        }
-        .sidebar.open {
-            right: 0;
-        }
-        .sidebar .close-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-        .sidebar .menu-item {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 12px;
-            padding: 14px 0;
-            color: white;
-            text-decoration: none;
-            font-size: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            transition: 0.2s;
         }
-        .sidebar .menu-item:hover {
-            color: #60a5fa;
-            padding-left: 8px;
-        }
-        .sidebar .menu-item i {
-            width: 24px;
-            font-size: 1.1rem;
-        }
-        .sidebar-title {
+        .header p {
             color: #94a3b8;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin: 20px 0 10px;
-        }
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 999;
-            display: none;
-        }
-        .overlay.show {
-            display: block;
+            margin-top: 8px;
+            font-size: 0.85rem;
         }
         .products-grid {
             display: grid;
@@ -148,6 +67,8 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             transition: all 0.3s ease;
             cursor: pointer;
+            animation: fadeIn 0.4s ease;
+            animation-fill-mode: both;
         }
         .product-card:hover {
             transform: translateY(-6px);
@@ -218,13 +139,14 @@
             backdrop-filter: blur(8px);
             justify-content: center;
             align-items: center;
-            z-index: 1100;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
         }
         .modal-content {
             background: #0f172a;
             border-radius: 32px;
             padding: 32px;
-            max-width: 450px;
+            max-width: 400px;
             width: 90%;
             border: 1px solid #334155;
         }
@@ -270,6 +192,11 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            transform: scale(1.02);
+            background: #2563eb;
         }
         .btn-secondary {
             background: #334155;
@@ -285,6 +212,10 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover {
+            background: #475569;
         }
         .toast {
             position: fixed;
@@ -296,8 +227,8 @@
             border-radius: 40px;
             font-size: 0.85rem;
             opacity: 0;
-            transition: 0.2s;
-            z-index: 1200;
+            transition: 0.3s;
+            z-index: 1100;
             color: white;
             display: flex;
             align-items: center;
@@ -316,22 +247,13 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        @media (max-width: 480px) {
-            .logo h1 { font-size: 1.1rem; }
-            .sidebar { width: 260px; }
-        }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <div class="logo">
-            <h1><i class="fas fa-store"></i> Yanto Store</h1>
-            <p>AutoOrder Digital</p>
-        </div>
-        <button class="menu-btn" onclick="toggleMenu()">
-            <i class="fas fa-bars"></i>
-        </button>
+        <h1><i class="fas fa-store"></i> Yanto Store</h1>
+        <p>Akun Roblox | Web | APK | DLL | Bayar pakai QRIS</p>
     </div>
     <div class="products-grid" id="productsGrid">
         <div style="text-align:center; color:#64748b; grid-column:1/-1;">
@@ -340,24 +262,12 @@
     </div>
 </div>
 
-<!-- Sidebar Menu -->
-<div class="overlay" id="overlay" onclick="toggleMenu()"></div>
-<div class="sidebar" id="sidebar">
-    <button class="close-btn" onclick="toggleMenu()"><i class="fas fa-times"></i></button>
-    <div class="sidebar-title">MENU</div>
-    <a href="/" class="menu-item"><i class="fas fa-home"></i> Beranda</a>
-    <div class="sidebar-title">BANTUAN</div>
-    <a href="https://t.me/Yantoidiotbruh" target="_blank" class="menu-item"><i class="fab fa-telegram-plane"></i> Telegram</a>
-    <a href="https://wa.me/6289676041776" target="_blank" class="menu-item"><i class="fab fa-whatsapp"></i> WhatsApp</a>
-</div>
-
 <div id="modal" class="modal">
     <div class="modal-content">
         <h3 id="modalProductName"></h3>
         <div id="modalProductDesc" style="color:#94a3b8; font-size:0.8rem; margin:5px 0;"></div>
         <div class="modal-price" id="modalPrice"></div>
         <input type="text" id="customerName" placeholder="Nama lengkap" required>
-        <input type="email" id="customerEmail" placeholder="Email (opsional)">
         <button class="btn-primary" id="createOrderBtn">
             <i class="fas fa-credit-card"></i> Buat Pesanan
         </button>
@@ -376,13 +286,6 @@
     const QRISPY_API_URL = 'https://api.qrispy.id';
     let currentProduct = null;
 
-    function toggleMenu() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        sidebar.classList.toggle('open');
-        overlay.classList.toggle('show');
-    }
-
     function toast(msg, isError = false) {
         const t = document.getElementById('toast');
         t.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> ${msg}`;
@@ -400,8 +303,8 @@
                 grid.innerHTML = '<div style="text-align:center; color:#64748b; grid-column:1/-1;"><i class="fas fa-inbox"></i> Belum ada produk</div>';
                 return;
             }
-            grid.innerHTML = data.products.map(p => `
-                <div class="product-card" onclick='openModal(${JSON.stringify(p).replace(/'/g, "&#39;")})'>
+            grid.innerHTML = data.products.map((p, i) => `
+                <div class="product-card" style="animation-delay: ${i * 0.05}s" onclick='openModal(${JSON.stringify(p).replace(/'/g, "&#39;")})'>
                     <div class="product-name">
                         <i class="fas fa-box"></i> ${escapeHtml(p.name)}
                     </div>
@@ -430,7 +333,6 @@
         document.getElementById('modalProductDesc').innerText = product.description || '';
         document.getElementById('modalPrice').innerHTML = `Rp ${product.price.toLocaleString()}`;
         document.getElementById('customerName').value = '';
-        document.getElementById('customerEmail').value = '';
         document.getElementById('modal').style.display = 'flex';
     }
 
@@ -453,7 +355,6 @@
     document.getElementById('createOrderBtn').onclick = async () => {
         const name = document.getElementById('customerName').value.trim();
         if (!name) { toast('Nama wajib diisi', true); return; }
-        const email = document.getElementById('customerEmail').value.trim();
 
         const btn = document.getElementById('createOrderBtn');
         const loading = document.getElementById('loadingIndicator');
@@ -470,7 +371,7 @@
                 body: JSON.stringify({
                     productId: currentProduct.id,
                     customerName: name,
-                    customerEmail: email,
+                    customerEmail: '-',
                     qrisId: qrisData.qris_id,
                     qrisImage: qrisData.qris_image_url,
                     totalAmount: totalAmount,
