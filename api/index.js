@@ -56,7 +56,6 @@ async function cleanupOrders() {
   
   for (const order of db.orders) {
     let shouldKeep = true;
-    
     if (order.status === 'cancelled') {
       shouldKeep = false;
       deletedCount++;
@@ -66,7 +65,6 @@ async function cleanupOrders() {
       deletedCount++;
       console.log(`🗑️ Hapus order expired: ${order.orderCode}`);
     }
-    
     if (shouldKeep) ordersToKeep.push(order);
   }
   
@@ -94,7 +92,7 @@ app.post('/api/admin/delete-selected-orders', async (req, res) => {
   res.json({ success: true, deletedCount });
 });
 
-// ========== RESET ORDER (HAPUS HANYA PENDING & CANCELLED) ==========
+// ========== RESET ORDER ==========
 app.post('/api/admin/reset-orders', async (req, res) => {
   const { adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
@@ -149,15 +147,30 @@ app.post('/api/admin/test-order', async (req, res) => {
         <div class="section">
           <div class="section-title"><i class="fas fa-gift"></i> Bonus</div>
           <div class="text-content">${escapeHtml(product.bonusContent)}</div>
+          <button class="chip-btn copy-btn" data-copy="${escapeHtml(product.bonusContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin Teks</button>
         </div>
       `;
     }
   }
   
-  // Format item
+  // Format item berdasarkan tipe
   let itemHtml = '';
   const isLink = product.itemContent.startsWith('http');
-  if (isLink) {
+  const isHtml = product.itemType === 'html';
+  
+  if (isHtml) {
+    itemHtml = `
+      <div class="section">
+        <div class="section-title"><i class="fas fa-code"></i> Barang Utama (HTML)</div>
+        <div class="item-row">
+          <div class="item-content">
+            <div class="html-preview">${product.itemContent}</div>
+          </div>
+          <button class="chip-btn copy-btn" data-copy="${escapeHtml(product.itemContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin HTML</button>
+        </div>
+      </div>
+    `;
+  } else if (isLink) {
     itemHtml = `
       <div class="section">
         <div class="section-title"><i class="fas fa-box"></i> Barang Utama</div>
@@ -166,12 +179,8 @@ app.post('/api/admin/test-order', async (req, res) => {
             <div class="text-content">${escapeHtml(product.itemContent)}</div>
           </div>
           <div style="display: flex; gap: 8px;">
-            <button class="chip-btn" onclick="copyToClipboard('${escapeHtml(product.itemContent).replace(/'/g, "\\'")}')">
-              <i class="fas fa-copy"></i> Salin Link
-            </button>
-            <a href="${escapeHtml(product.itemContent)}" class="chip-btn link-chip" target="_blank">
-              <i class="fas fa-external-link-alt"></i> Buka
-            </a>
+            <button class="chip-btn copy-btn" data-copy="${escapeHtml(product.itemContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin Link</button>
+            <a href="${escapeHtml(product.itemContent)}" class="chip-btn link-chip" target="_blank"><i class="fas fa-external-link-alt"></i> Buka</a>
           </div>
         </div>
       </div>
@@ -184,9 +193,7 @@ app.post('/api/admin/test-order', async (req, res) => {
           <div class="item-content">
             <div class="text-content">${escapeHtml(product.itemContent)}</div>
           </div>
-          <button class="chip-btn" onclick="copyToClipboard('${escapeHtml(product.itemContent).replace(/'/g, "\\'")}')">
-            <i class="fas fa-copy"></i> Salin Teks
-          </button>
+          <button class="chip-btn copy-btn" data-copy="${escapeHtml(product.itemContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin Teks</button>
         </div>
       </div>
     `;
@@ -206,7 +213,7 @@ app.post('/api/admin/test-order', async (req, res) => {
             body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; animation: fadeIn 0.5s ease; }
             @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02); } }
-            .card { background: rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius: 32px; padding: 32px; max-width: 520px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 25px 45px rgba(0,0,0,0.3); }
+            .card { background: rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius: 32px; padding: 32px; max-width: 580px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 25px 45px rgba(0,0,0,0.3); }
             .logo { text-align: center; margin-bottom: 20px; }
             .logo h2 { font-size: 1.3rem; font-weight: 700; background: linear-gradient(135deg, #ffffff, #94a3f8); background-clip: text; -webkit-background-clip: text; color: transparent; }
             .success-icon { text-align: center; margin-bottom: 20px; }
@@ -218,6 +225,7 @@ app.post('/api/admin/test-order', async (req, res) => {
             .item-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
             .item-content { flex: 1; word-break: break-all; }
             .text-content { color: #e2e8f0; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; }
+            .html-preview { background: #0f172a; padding: 12px; border-radius: 12px; color: #e2e8f0; font-size: 0.75rem; font-family: monospace; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow: auto; }
             .chip-btn { background: #334155; border: none; padding: 6px 14px; border-radius: 40px; color: white; font-size: 0.7rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; white-space: nowrap; }
             .chip-btn:hover { background: #3b82f6; transform: translateY(-2px); }
             .link-chip { background: #3b82f6; text-decoration: none; }
@@ -241,9 +249,22 @@ app.post('/api/admin/test-order', async (req, res) => {
         </div>
         <script>
             function copyToClipboard(text) {
-                navigator.clipboard.writeText(text);
+                try {
+                    navigator.clipboard.writeText(text);
+                    showToast('📋 Tersalin!');
+                } catch(e) {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    showToast('📋 Tersalin!');
+                }
+            }
+            function showToast(msg) {
                 const toast = document.createElement('div');
-                toast.textContent = '📋 Tersalin!';
+                toast.textContent = msg;
                 toast.style.position = 'fixed';
                 toast.style.bottom = '20px';
                 toast.style.left = '50%';
@@ -255,8 +276,14 @@ app.post('/api/admin/test-order', async (req, res) => {
                 toast.style.zIndex = '2000';
                 toast.style.color = 'white';
                 document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 1500);
+                setTimeout(() => toast.remove(), 2000);
             }
+            document.querySelectorAll('.copy-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const text = this.getAttribute('data-copy');
+                    if (text) copyToClipboard(text);
+                });
+            });
         </script>
     </body>
     </html>
