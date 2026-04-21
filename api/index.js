@@ -159,6 +159,7 @@ app.post('/api/admin/test-order', async (req, res) => {
   const isHtml = product.itemType === 'html';
   
   if (isHtml) {
+    const escapedContent = escapeHtml(product.itemContent).replace(/"/g, '&quot;');
     itemHtml = `
       <div class="section">
         <div class="section-title"><i class="fas fa-code"></i> Barang Utama (HTML)</div>
@@ -166,7 +167,10 @@ app.post('/api/admin/test-order', async (req, res) => {
           <div class="item-content">
             <div class="html-preview">${product.itemContent}</div>
           </div>
-          <button class="chip-btn copy-btn" data-copy="${escapeHtml(product.itemContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin HTML</button>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="chip-btn preview-btn" data-html="${escapedContent}"><i class="fas fa-eye"></i> Cek</button>
+            <button class="chip-btn copy-btn" data-copy="${escapedContent}"><i class="fas fa-copy"></i> Salin HTML</button>
+          </div>
         </div>
       </div>
     `;
@@ -225,7 +229,7 @@ app.post('/api/admin/test-order', async (req, res) => {
             .item-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
             .item-content { flex: 1; word-break: break-all; }
             .text-content { color: #e2e8f0; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; }
-            .html-preview { background: #0f172a; padding: 12px; border-radius: 12px; color: #e2e8f0; font-size: 0.75rem; font-family: monospace; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow: auto; }
+            .html-preview { background: #0f172a; padding: 12px; border-radius: 12px; color: #e2e8f0; font-size: 0.75rem; font-family: monospace; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow: auto; border: 1px solid #334155; }
             .chip-btn { background: #334155; border: none; padding: 6px 14px; border-radius: 40px; color: white; font-size: 0.7rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; white-space: nowrap; }
             .chip-btn:hover { background: #3b82f6; transform: translateY(-2px); }
             .link-chip { background: #3b82f6; text-decoration: none; }
@@ -234,6 +238,8 @@ app.post('/api/admin/test-order', async (req, res) => {
             .bonus-list li { color: #e2e8f0; font-size: 0.85rem; padding: 6px 0; display: flex; align-items: center; gap: 8px; }
             .bonus-list li i { color: #f59e0b; font-size: 0.7rem; }
             .footer-note { text-align: center; color: #475569; font-size: 0.65rem; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+            .btn-back { background: #334155; border: none; padding: 10px 20px; border-radius: 40px; color: white; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; text-decoration: none; margin-top: 10px; }
+            .btn-back:hover { background: #475569; transform: translateY(-2px); }
             @media (max-width: 480px) { .item-row { flex-direction: column; align-items: flex-start; } .chip-btn { align-self: flex-start; } }
         </style>
     </head>
@@ -245,7 +251,10 @@ app.post('/api/admin/test-order', async (req, res) => {
             <div class="product-name">${escapeHtml(product.name)}</div>
             ${itemHtml}
             ${bonusHtml}
-            <div class="footer-note"><i class="fas fa-flask"></i> Ini adalah mode test - tidak mempengaruhi stok & database</div>
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/" class="btn-back"><i class="fas fa-home"></i> Kembali ke Beranda</a>
+            </div>
+            <div class="footer-note"><i class="fas fa-flask"></i> Mode test - tidak mempengaruhi stok & database</div>
         </div>
         <script>
             function copyToClipboard(text) {
@@ -282,6 +291,14 @@ app.post('/api/admin/test-order', async (req, res) => {
                 btn.addEventListener('click', function() {
                     const text = this.getAttribute('data-copy');
                     if (text) copyToClipboard(text);
+                });
+            });
+            document.querySelectorAll('.preview-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const htmlContent = this.getAttribute('data-html');
+                    const previewWindow = window.open();
+                    previewWindow.document.write(htmlContent);
+                    previewWindow.document.close();
                 });
             });
         </script>
@@ -339,7 +356,8 @@ app.get('/api/get-order/:orderCode', async (req, res) => {
     bonusContent: bonusContent,
     qrisImage: order.qrisImage,
     totalAmount: order.totalAmount,
-    expiredAt: order.expiredAt
+    expiredAt: order.expiredAt,
+    itemType: product?.itemType || 'text'
   });
 });
 
