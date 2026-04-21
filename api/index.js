@@ -47,7 +47,7 @@ async function setDB(products, orders, oldSha) {
   return data.content.sha;
 }
 
-// ========== AUTO DELETE: CANCELLED LANGSUNG, EXPIRED LANGSUNG ==========
+// ========== AUTO DELETE ==========
 async function cleanupOrders() {
   console.log('🧹 Menjalankan cleanup orders...');
   const db = await getDB();
@@ -59,11 +59,9 @@ async function cleanupOrders() {
     if (order.status === 'cancelled') {
       shouldKeep = false;
       deletedCount++;
-      console.log(`🗑️ Hapus order cancelled: ${order.orderCode}`);
     } else if (order.status === 'expired') {
       shouldKeep = false;
       deletedCount++;
-      console.log(`🗑️ Hapus order expired: ${order.orderCode}`);
     }
     if (shouldKeep) ordersToKeep.push(order);
   }
@@ -88,7 +86,6 @@ app.post('/api/admin/delete-selected-orders', async (req, res) => {
   const deletedCount = orderIds.length;
   db.orders = db.orders.filter(o => !orderIds.includes(o.id.toString()));
   await setDB(db.products, db.orders, db.sha);
-  
   res.json({ success: true, deletedCount });
 });
 
@@ -100,7 +97,6 @@ app.post('/api/admin/reset-orders', async (req, res) => {
   const db = await getDB();
   const paidOrders = db.orders.filter(o => o.status === 'paid');
   const deletedCount = db.orders.length - paidOrders.length;
-  
   db.orders = paidOrders;
   await setDB(db.products, db.orders, db.sha);
   
@@ -109,7 +105,7 @@ app.post('/api/admin/reset-orders', async (req, res) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       chat_id: TELEGRAM_CHAT_ID,
-      text: `🗑️ *RESET ORDER*\n\n✅ ${deletedCount} order (pending/cancelled) telah dihapus.\n📦 ${paidOrders.length} order paid tetap tersimpan.`,
+      text: `🗑️ *RESET ORDER*\n\n✅ ${deletedCount} order dihapus.\n📦 ${paidOrders.length} order paid tersimpan.`,
       parse_mode: 'Markdown'
     })
   }).catch(console.error);
@@ -117,7 +113,7 @@ app.post('/api/admin/reset-orders', async (req, res) => {
   res.json({ success: true, deletedCount, keptCount: paidOrders.length });
 });
 
-// ========== TEST ORDER (LANGSUNG TAMPILIN HTML, TIDAK DISIMPAN) ==========
+// ========== TEST ORDER (TIDAK DISIMPAN) ==========
 app.post('/api/admin/test-order', async (req, res) => {
   const { productId, adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
@@ -153,23 +149,23 @@ app.post('/api/admin/test-order', async (req, res) => {
     }
   }
   
-  // Format item berdasarkan tipe
+  // Format item
   let itemHtml = '';
   const isLink = product.itemContent.startsWith('http');
   const isHtml = product.itemType === 'html';
+  const escapedContent = escapeHtml(product.itemContent).replace(/"/g, '&quot;');
+  const rawHtml = product.itemContent;
+  const escapedForAttr = rawHtml.replace(/"/g, '&quot;').replace(/\n/g, '\\n');
   
   if (isHtml) {
-    const escapedContent = escapeHtml(product.itemContent).replace(/"/g, '&quot;');
     itemHtml = `
       <div class="section">
-        <div class="section-title"><i class="fas fa-code"></i> Barang Utama (HTML)</div>
+        <div class-section-title"><i class="fas fa-code"></i> Barang Utama (HTML)</div>
         <div class="item-row">
-          <div class="item-content">
-            <div class="html-preview">${product.itemContent}</div>
-          </div>
+          <div class="item-content"></div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button class="chip-btn preview-btn" data-html="${escapedContent}"><i class="fas fa-eye"></i> Cek</button>
-            <button class="chip-btn copy-btn" data-copy="${escapedContent}"><i class="fas fa-copy"></i> Salin HTML</button>
+            <button class="chip-btn preview-btn" data-html="${escapedForAttr}"><i class="fas fa-eye"></i> Cek</button>
+            <button class="chip-btn copy-btn" data-copy="${escapedForAttr}"><i class="fas fa-copy"></i> Salin HTML</button>
           </div>
         </div>
       </div>
@@ -179,11 +175,9 @@ app.post('/api/admin/test-order', async (req, res) => {
       <div class="section">
         <div class="section-title"><i class="fas fa-box"></i> Barang Utama</div>
         <div class="item-row">
-          <div class="item-content">
-            <div class="text-content">${escapeHtml(product.itemContent)}</div>
-          </div>
+          <div class="item-content"><div class="text-content">${escapeHtml(product.itemContent)}</div></div>
           <div style="display: flex; gap: 8px;">
-            <button class="chip-btn copy-btn" data-copy="${escapeHtml(product.itemContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin Link</button>
+            <button class="chip-btn copy-btn" data-copy="${escapedContent}"><i class="fas fa-copy"></i> Salin Link</button>
             <a href="${escapeHtml(product.itemContent)}" class="chip-btn link-chip" target="_blank"><i class="fas fa-external-link-alt"></i> Buka</a>
           </div>
         </div>
@@ -194,10 +188,8 @@ app.post('/api/admin/test-order', async (req, res) => {
       <div class="section">
         <div class="section-title"><i class="fas fa-box"></i> Barang Utama</div>
         <div class="item-row">
-          <div class="item-content">
-            <div class="text-content">${escapeHtml(product.itemContent)}</div>
-          </div>
-          <button class="chip-btn copy-btn" data-copy="${escapeHtml(product.itemContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin Teks</button>
+          <div class="item-content"><div class="text-content">${escapeHtml(product.itemContent)}</div></div>
+          <button class="chip-btn copy-btn" data-copy="${escapedContent}"><i class="fas fa-copy"></i> Salin Teks</button>
         </div>
       </div>
     `;
@@ -229,7 +221,6 @@ app.post('/api/admin/test-order', async (req, res) => {
             .item-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
             .item-content { flex: 1; word-break: break-all; }
             .text-content { color: #e2e8f0; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; }
-            .html-preview { background: #0f172a; padding: 12px; border-radius: 12px; color: #e2e8f0; font-size: 0.75rem; font-family: monospace; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow: auto; border: 1px solid #334155; }
             .chip-btn { background: #334155; border: none; padding: 6px 14px; border-radius: 40px; color: white; font-size: 0.7rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; white-space: nowrap; }
             .chip-btn:hover { background: #3b82f6; transform: translateY(-2px); }
             .link-chip { background: #3b82f6; text-decoration: none; }
@@ -258,18 +249,8 @@ app.post('/api/admin/test-order', async (req, res) => {
         </div>
         <script>
             function copyToClipboard(text) {
-                try {
-                    navigator.clipboard.writeText(text);
-                    showToast('📋 Tersalin!');
-                } catch(e) {
-                    const textarea = document.createElement('textarea');
-                    textarea.value = text;
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(textarea);
-                    showToast('📋 Tersalin!');
-                }
+                try { navigator.clipboard.writeText(text); showToast('📋 Tersalin!'); } 
+                catch(e) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('📋 Tersalin!'); }
             }
             function showToast(msg) {
                 const toast = document.createElement('div');
@@ -296,9 +277,9 @@ app.post('/api/admin/test-order', async (req, res) => {
             document.querySelectorAll('.preview-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const htmlContent = this.getAttribute('data-html');
-                    const previewWindow = window.open();
-                    previewWindow.document.write(htmlContent);
-                    previewWindow.document.close();
+                    const win = window.open();
+                    win.document.write(htmlContent);
+                    win.document.close();
                 });
             });
         </script>
@@ -434,7 +415,6 @@ app.post('/api/create-order', async (req, res) => {
   };
   db.orders.unshift(newOrder);
   await setDB(db.products, db.orders, db.sha);
-  
   res.json({ success: true, orderCode: orderCode });
 });
 
@@ -448,7 +428,6 @@ app.post('/api/cancel-order/:orderId', async (req, res) => {
   order.status = 'cancelled';
   order.cancelledAt = new Date().toISOString();
   await setDB(db.products, db.orders, db.sha);
-  
   res.json({ success: true });
 });
 
@@ -513,7 +492,6 @@ app.post('/api/admin/backup', async (req, res) => {
     method: 'POST',
     body: formData
   });
-  
   res.json({ success: true });
 });
 
@@ -541,7 +519,6 @@ app.post('/api/admin/broadcast', async (req, res) => {
       parse_mode: 'Markdown'
     })
   });
-  
   res.json({ success: true, sentCount });
 });
 
