@@ -96,29 +96,48 @@
             align-items: center;
             gap: 8px;
         }
-        .link-btn {
-            display: inline-flex;
+        .item-row {
+            display: flex;
             align-items: center;
-            gap: 8px;
-            background: #3b82f6;
-            color: white;
-            padding: 10px 18px;
-            border-radius: 40px;
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 0.85rem;
-            transition: all 0.2s;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
         }
-        .link-btn:hover {
-            background: #2563eb;
-            transform: translateY(-2px);
+        .item-content {
+            flex: 1;
+            word-break: break-all;
         }
-        .text-content {
+        .item-content .text-content {
             color: #e2e8f0;
             font-size: 0.85rem;
             line-height: 1.5;
             white-space: pre-wrap;
-            word-break: break-all;
+        }
+        .chip-btn {
+            background: #334155;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 40px;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .chip-btn:hover {
+            background: #3b82f6;
+            transform: translateY(-2px);
+        }
+        .link-chip {
+            background: #3b82f6;
+            text-decoration: none;
+        }
+        .link-chip:hover {
+            background: #2563eb;
         }
         .bonus-list {
             list-style: none;
@@ -179,7 +198,7 @@
             justify-content: center;
             gap: 8px;
         }
-        .refresh-btn, .cancel-btn, .copy-btn {
+        .refresh-btn, .cancel-btn {
             border: none;
             padding: 12px 24px;
             border-radius: 40px;
@@ -209,24 +228,6 @@
             background: #dc2626;
             transform: translateY(-2px);
         }
-        .copy-btn {
-            background: #334155;
-            color: white;
-            margin-top: 8px;
-        }
-        .copy-btn:hover {
-            background: #475569;
-            transform: translateY(-2px);
-        }
-        .button-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 12px;
-        }
-        .button-group .copy-btn {
-            flex: 1;
-            margin-top: 0;
-        }
         .expiry-text {
             text-align: center;
             color: #64748b;
@@ -236,6 +237,15 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
+        }
+        @media (max-width: 480px) {
+            .item-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .chip-btn {
+                align-self: flex-start;
+            }
         }
     </style>
 </head>
@@ -278,15 +288,13 @@
             
             <div class="section">
                 <div class="section-title"><i class="fas fa-box"></i> Barang Utama</div>
-                <div class="section-content" id="productCodeContainer"></div>
-                <button class="copy-btn" id="copyTextBtn" style="margin-top:12px;"><i class="fas fa-copy"></i> 📋 Salin Teks</button>
+                <div id="productCodeContainer"></div>
             </div>
             
             <div id="bonusContainer" style="display:none;">
                 <div class="section">
                     <div class="section-title"><i class="fas fa-gift"></i> Bonus</div>
-                    <div class="section-content" id="bonusContent"></div>
-                    <button class="copy-btn" id="copyBonusBtn" style="margin-top:12px;"><i class="fas fa-copy"></i> 📋 Salin Bonus</button>
+                    <div id="bonusContent"></div>
                 </div>
             </div>
             
@@ -305,6 +313,29 @@
             return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
         }
         
+        function toast(msg) {
+            const t = document.createElement('div');
+            t.textContent = msg;
+            t.style.position = 'fixed';
+            t.style.bottom = '20px';
+            t.style.left = '50%';
+            t.style.transform = 'translateX(-50%)';
+            t.style.background = '#1e293b';
+            t.style.padding = '10px 20px';
+            t.style.borderRadius = '40px';
+            t.style.fontSize = '0.8rem';
+            t.style.zIndex = '2000';
+            t.style.color = 'white';
+            t.style.animation = 'fadeIn 0.3s ease';
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 2000);
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            toast('📋 Tersalin!');
+        }
+        
         function formatBonus(content) {
             if (content.includes('\n')) {
                 const items = content.split('\n').filter(item => item.trim());
@@ -317,16 +348,30 @@
             const isLink = content.startsWith('http');
             if (isLink) {
                 return `
-                    <div class="text-content">${escapeHtml(content)}</div>
-                    <div class="button-group">
-                        <button class="copy-btn" id="copyUrlBtn"><i class="fas fa-copy"></i> 🔗 Salin Link</button>
-                        <a href="${escapeHtml(content)}" class="copy-btn" target="_blank" style="text-decoration:none; text-align:center;"><i class="fas fa-external-link-alt"></i> Buka Link</a>
+                    <div class="item-row">
+                        <div class="item-content">
+                            <div class="text-content">${escapeHtml(content)}</div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="chip-btn" onclick="copyToClipboard('${escapeHtml(content).replace(/'/g, "\\'")}')">
+                                <i class="fas fa-copy"></i> Salin Link
+                            </button>
+                            <a href="${escapeHtml(content)}" class="chip-btn link-chip" target="_blank">
+                                <i class="fas fa-external-link-alt"></i> Buka
+                            </a>
+                        </div>
                     </div>
                 `;
             }
             return `
-                <div class="text-content">${escapeHtml(content)}</div>
-                <button class="copy-btn" id="copyTextBtn"><i class="fas fa-copy"></i> 📋 Salin Teks</button>
+                <div class="item-row">
+                    <div class="item-content">
+                        <div class="text-content">${escapeHtml(content)}</div>
+                    </div>
+                    <button class="chip-btn" onclick="copyToClipboard('${escapeHtml(content).replace(/'/g, "\\'")}')">
+                        <i class="fas fa-copy"></i> Salin Teks
+                    </button>
+                </div>
             `;
         }
         
@@ -358,25 +403,12 @@
                     document.getElementById('pendingContent').style.display = 'none';
                     document.getElementById('successContent').style.display = 'block';
                     document.getElementById('productName').innerText = data.productName;
-                    
-                    const container = document.getElementById('productCodeContainer');
-                    container.innerHTML = formatItem(data.productCode);
+                    document.getElementById('productCodeContainer').innerHTML = formatItem(data.productCode);
                     
                     if (data.bonusContent && data.bonusContent !== '') {
                         document.getElementById('bonusContent').innerHTML = formatBonus(data.bonusContent);
                         document.getElementById('bonusContainer').style.display = 'block';
-                        setTimeout(() => {
-                            const copyBonusBtn = document.getElementById('copyBonusBtn');
-                            if (copyBonusBtn) copyBonusBtn.onclick = () => copyToClipboard(data.bonusContent);
-                        }, 100);
                     }
-                    
-                    setTimeout(() => {
-                        const copyTextBtn = document.getElementById('copyTextBtn');
-                        if (copyTextBtn) copyTextBtn.onclick = () => copyToClipboard(data.productCode);
-                        const copyUrlBtn = document.getElementById('copyUrlBtn');
-                        if (copyUrlBtn) copyUrlBtn.onclick = () => copyToClipboard(data.productCode);
-                    }, 100);
                 } else {
                     document.getElementById('qrisImage').src = data.qrisImage;
                     document.getElementById('totalAmount').innerText = data.totalAmount.toLocaleString();
@@ -384,29 +416,6 @@
                     startPolling();
                 }
             } catch (err) { console.error(err); }
-        }
-        
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text);
-            toast('📋 Tersalin!');
-        }
-        
-        function toast(msg) {
-            const t = document.createElement('div');
-            t.textContent = msg;
-            t.style.position = 'fixed';
-            t.style.bottom = '20px';
-            t.style.left = '50%';
-            t.style.transform = 'translateX(-50%)';
-            t.style.background = '#1e293b';
-            t.style.padding = '10px 20px';
-            t.style.borderRadius = '40px';
-            t.style.fontSize = '0.8rem';
-            t.style.zIndex = '2000';
-            t.style.color = 'white';
-            t.style.animation = 'fadeIn 0.3s ease';
-            document.body.appendChild(t);
-            setTimeout(() => t.remove(), 2000);
         }
         
         function startPolling() {
