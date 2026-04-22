@@ -113,6 +113,41 @@ app.post('/api/admin/reset-orders', async (req, res) => {
   res.json({ success: true, deletedCount, keptCount: paidOrders.length });
 });
 
+// ========== FUNGSI CANCEL QRIS DI QRISPY ==========
+async function cancelQRISInQrispy(qrisId) {
+  try {
+    const response = await fetch(`${QRISPY_API_URL}/api/payment/qris/${qrisId}/cancel`, {
+      method: 'POST',
+      headers: { 'X-API-Token': QRISPY_TOKEN }
+    });
+    const data = await response.json();
+    console.log(`Cancel QRIS ${qrisId}:`, data);
+    return data;
+  } catch (err) {
+    console.error('Cancel QRIS error:', err);
+    return null;
+  }
+}
+
+// ========== CANCEL ORDER (juga cancel QRIS di Qrispy) ==========
+app.post('/api/cancel-order/:orderId', async (req, res) => {
+  const db = await getDB();
+  const order = db.orders.find(o => o.id == req.params.orderId || o.orderCode == req.params.orderId);
+  if (!order) return res.status(404).json({ error: 'Order tidak ditemukan' });
+  if (order.status !== 'pending') return res.status(400).json({ error: 'Order sudah diproses' });
+  
+  // Cancel QRIS di Qrispy
+  if (order.qrisId && order.qrisId !== 'test-') {
+    await cancelQRISInQrispy(order.qrisId);
+  }
+  
+  order.status = 'cancelled';
+  order.cancelledAt = new Date().toISOString();
+  await setDB(db.products, db.orders, db.sha);
+  
+  res.json({ success: true });
+});
+
 // ========== TEST ORDER (TIDAK DISIMPAN) ==========
 app.post('/api/admin/test-order', async (req, res) => {
   const { productId, adminKey } = req.body;
@@ -139,11 +174,12 @@ app.post('/api/admin/test-order', async (req, res) => {
         </div>
       `;
     } else {
+      const escapedBonus = escapeHtml(product.bonusContent).replace(/"/g, '&quot;');
       bonusHtml = `
         <div class="section">
           <div class="section-title"><i class="fas fa-gift"></i> Bonus</div>
           <div class="text-content">${escapeHtml(product.bonusContent)}</div>
-          <button class="chip-btn copy-btn" data-copy="${escapeHtml(product.bonusContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin Teks</button>
+          <button class="chip-btn copy-btn" data-copy="${escapedBonus}"><i class="fas fa-copy"></i> Salin Teks</button>
         </div>
       `;
     }
@@ -153,16 +189,17 @@ app.post('/api/admin/test-order', async (req, res) => {
   let itemHtml = '';
   const isLink = product.itemContent.startsWith('http');
   const isHtml = product.itemType === 'html';
-  const rawHtml = product.itemContent;
-  // Untuk atribut data-html, kita simpan HTML asli (tanpa escape berlebihan)
-  const escapedForAttr = rawHtml.replace(/"/g, '&quot;').replace(/\n/g, '\\n');
   
   if (isHtml) {
+    const rawHtml = product.itemContent;
+    const escapedForAttr = rawHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
     itemHtml = `
       <div class="section">
         <div class="section-title"><i class="fas fa-code"></i> Barang Utama (HTML)</div>
         <div class="item-row">
-          <div class="item-content"></div>
+          <div class="item-content">
+            <div class="html-preview" style="background:#0f172a; padding:12px; border-radius:12px; color:#e2e8f0; font-size:0.75rem; font-family:monospace; white-space:pre-wrap; word-break:break-all; max-height:200px; overflow:auto; border:1px solid #334155;">${rawHtml}</div>
+          </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="chip-btn preview-btn" data-html="${escapedForAttr}"><i class="fas fa-eye"></i> Cek</button>
             <button class="chip-btn copy-btn" data-copy="${escapedForAttr}"><i class="fas fa-copy"></i> Salin HTML</button>
@@ -171,25 +208,27 @@ app.post('/api/admin/test-order', async (req, res) => {
       </div>
     `;
   } else if (isLink) {
+    const escapedContent = escapeHtml(product.itemContent).replace(/"/g, '&quot;');
     itemHtml = `
       <div class="section">
         <div class="section-title"><i class="fas fa-box"></i> Barang Utama</div>
         <div class="item-row">
           <div class="item-content"><div class="text-content">${escapeHtml(product.itemContent)}</div></div>
           <div style="display: flex; gap: 8px;">
-            <button class="chip-btn copy-btn" data-copy="${escapeHtml(product.itemContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin Link</button>
+            <button class="chip-btn copy-btn" data-copy="${escapedContent}"><i class="fas fa-copy"></i> Salin Link</button>
             <a href="${escapeHtml(product.itemContent)}" class="chip-btn link-chip" target="_blank"><i class="fas fa-external-link-alt"></i> Buka</a>
           </div>
         </div>
       </div>
     `;
   } else {
+    const escapedContent = escapeHtml(product.itemContent).replace(/"/g, '&quot;');
     itemHtml = `
       <div class="section">
         <div class="section-title"><i class="fas fa-box"></i> Barang Utama</div>
         <div class="item-row">
           <div class="item-content"><div class="text-content">${escapeHtml(product.itemContent)}</div></div>
-          <button class="chip-btn copy-btn" data-copy="${escapeHtml(product.itemContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin Teks</button>
+          <button class="chip-btn copy-btn" data-copy="${escapedContent}"><i class="fas fa-copy"></i> Salin Teks</button>
         </div>
       </div>
     `;
@@ -422,19 +461,6 @@ app.post('/api/create-order', async (req, res) => {
   db.orders.unshift(newOrder);
   await setDB(db.products, db.orders, db.sha);
   res.json({ success: true, orderCode: orderCode });
-});
-
-// ========== CANCEL ORDER ==========
-app.post('/api/cancel-order/:orderId', async (req, res) => {
-  const db = await getDB();
-  const order = db.orders.find(o => o.id == req.params.orderId || o.orderCode == req.params.orderId);
-  if (!order) return res.status(404).json({ error: 'Order tidak ditemukan' });
-  if (order.status !== 'pending') return res.status(400).json({ error: 'Order sudah diproses' });
-  
-  order.status = 'cancelled';
-  order.cancelledAt = new Date().toISOString();
-  await setDB(db.products, db.orders, db.sha);
-  res.json({ success: true });
 });
 
 // ========== FUNGSI GENERATE QRIS ==========
