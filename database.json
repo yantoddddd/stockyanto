@@ -8,10 +8,10 @@
       "stock": 100,
       "itemType": "link",
       "itemContent": "https://qrispy.id",
-      "bonusType": "text",
-      "bonusContent": "APK QRIS: (NO KTP)\n- ZevalDigital\n- Nexapay\n- Davpay",
+      "bonusType": "none",
+      "bonusContent": "",
       "createdAt": "2026-04-20T10:34:17.269Z",
-      "updatedAt": "2026-04-21T17:02:36.193Z"
+      "updatedAt": "2026-04-23T10:27:48.638Z"
     },
     {
       "id": 1776700746939,
@@ -105,5 +105,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-23T10:27:35.706Z"
+  "updatedAt": "2026-04-23T10:27:48.638Z"
 }
