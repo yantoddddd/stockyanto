@@ -38,6 +38,18 @@
       "bonusContent": "",
       "createdAt": "2026-04-21T17:02:11.948Z",
       "updatedAt": "2026-04-21T22:54:51.319Z"
+    },
+    {
+      "id": 1776940055706,
+      "name": "WEB SUNTIK SOSMED",
+      "description": "Web ini adalah web yang sering digunakan para member jb",
+      "price": 2000,
+      "stock": 25,
+      "itemType": "link",
+      "itemContent": "https://fayupedia.id/",
+      "bonusType": "none",
+      "bonusContent": "",
+      "createdAt": "2026-04-23T10:27:35.706Z"
     }
   ],
   "orders": [
@@ -93,5 +105,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-23T10:25:10.517Z"
+  "updatedAt": "2026-04-23T10:27:35.706Z"
 }
