@@ -54,10 +54,11 @@
       "voucherCode": null,
       "customerName": "awd",
       "customerEmail": "-",
-      "status": "pending",
+      "status": "cancelled",
       "qrisImage": "https://api.qrispy.id/api/public/qris/a19e8029-3109-47df-b8e7-b08443121864/image",
       "expiredAt": "2026-04-24T09:16:10+00:00",
-      "createdAt": "2026-04-24T09:01:12.843Z"
+      "createdAt": "2026-04-24T09:01:12.843Z",
+      "cancelledAt": "2026-04-24T09:01:20.811Z"
     },
     {
       "id": 1777012839892,
@@ -215,5 +216,5 @@
   ],
   "reviews": [],
   "vouchers": [],
-  "updatedAt": "2026-04-24T09:01:12.843Z"
+  "updatedAt": "2026-04-24T09:01:20.811Z"
 }
