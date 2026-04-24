@@ -31,7 +31,7 @@
       "name": "WEB SUNTIK SOSMED",
       "description": "Web ini adalah web yang sering digunakan para member jb",
       "price": 2000,
-      "stock": 23,
+      "stock": 22,
       "itemType": "link",
       "itemContent": "https://fayupedia.id/",
       "bonusType": "none",
@@ -51,10 +51,11 @@
       "totalAmount": 2000,
       "customerName": "KING KILZ",
       "customerEmail": "-",
-      "status": "pending",
+      "status": "paid",
       "qrisImage": "https://api.qrispy.id/api/public/qris/a19f0deb-e45d-4823-9562-210b25dd37bc/image",
       "expiredAt": "2026-04-24T15:52:34+00:00",
-      "createdAt": "2026-04-24T15:37:35.923Z"
+      "createdAt": "2026-04-24T15:37:35.923Z",
+      "paidAt": "2026-04-24T15:38:07+00:00"
     },
     {
       "id": 1777035639805,
@@ -276,5 +277,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-24T15:37:35.924Z"
+  "updatedAt": "2026-04-24T15:39:09.777Z"
 }
