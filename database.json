@@ -203,10 +203,10 @@
       "minAmount": 0,
       "expiredAt": "2026-04-25T00:00:00.000Z",
       "usageLimit": null,
-      "usedCount": 1,
+      "usedCount": 2,
       "active": true,
       "createdAt": "2026-04-24T09:12:49.346Z"
     }
   ],
-  "updatedAt": "2026-04-24T09:13:07.248Z"
+  "updatedAt": "2026-04-24T09:13:56.979Z"
 }
