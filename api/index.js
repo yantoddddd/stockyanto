@@ -19,9 +19,6 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO || 'yantoddddd/stockyanto';
 const GITHUB_PATH = 'database.json';
 
-// ========== TOKEN STORAGE ==========
-const adminTokens = new Map();
-
 async function getDB() {
   try {
     const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_PATH}`, {
@@ -55,96 +52,15 @@ async function sendTelegramMessage(text) {
     await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: TELEGRAM_CHAT_ID,
-        text: text,
-        parse_mode: 'HTML'
-      })
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: text, parse_mode: 'HTML' })
     });
-  } catch (err) {
-    console.error('Telegram error:', err);
-  }
+  } catch (err) { console.error('Telegram error:', err); }
 }
-
-// ========== FUNGSI CANCEL QRIS DI QRISPY ==========
-async function cancelQRISInQrispy(qrisId) {
-  try {
-    console.log(`🔄 Mencoba cancel QRIS: ${qrisId}`);
-    const response = await fetch(`${QRISPY_API_URL}/api/payment/qris/${qrisId}/cancel`, {
-      method: 'POST',
-      headers: { 
-        'X-API-Token': QRISPY_TOKEN,
-        'Content-Type': 'application/json'
-      }
-    });
-    const data = await response.json();
-    console.log(`📡 Response cancel QRIS:`, data);
-    return data.status === 'success';
-  } catch (err) {
-    console.error('❌ Cancel QRIS error:', err);
-    return false;
-  }
-}
-
-// ========== MIDDLEWARE VERIFIKASI TOKEN ==========
-function verifyAdminToken(req, res, next) {
-  const token = req.query.token || req.body.token || req.headers['x-admin-token'];
-  if (!token) {
-    return res.status(401).json({ error: 'Token required' });
-  }
-  const tokenData = adminTokens.get(token);
-  if (!tokenData || tokenData.expiresAt < Date.now()) {
-    adminTokens.delete(token);
-    return res.status(401).json({ error: 'Invalid or expired token' });
-  }
-  next();
-}
-
-// ========== ADMIN LOGIN ==========
-app.post('/api/admin/login', (req, res) => {
-  const { adminKey } = req.body;
-  if (adminKey !== ADMIN_KEY) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  const token = crypto.randomBytes(32).toString('hex');
-  const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-  adminTokens.set(token, { expiresAt });
-  res.json({ success: true, token, expiresAt });
-});
-
-// ========== VERIFIKASI TOKEN ==========
-app.get('/api/admin/verify', (req, res) => {
-  const token = req.query.token;
-  if (!token) return res.json({ valid: false });
-  const tokenData = adminTokens.get(token);
-  if (tokenData && tokenData.expiresAt > Date.now()) {
-    res.json({ valid: true });
-  } else {
-    if (tokenData) adminTokens.delete(token);
-    res.json({ valid: false });
-  }
-});
-
-// ========== AUTO CLEANUP TOKEN KADALUARSA ==========
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, data] of adminTokens.entries()) {
-    if (data.expiresAt < now) {
-      adminTokens.delete(token);
-    }
-  }
-}, 60 * 60 * 1000);
 
 // ========== AUTO PING WEB ==========
-async function autoPingWeb() {
-  try {
-    await fetch('https://stockyanto.vercel.app/api/health');
-    console.log('🏓 Auto ping success');
-  } catch (err) {
-    console.error('Ping failed:', err);
-  }
-}
-setInterval(autoPingWeb, 5 * 60 * 1000);
+setInterval(async () => {
+  try { await fetch('https://stockyanto.vercel.app/api/health'); } catch(e) {}
+}, 5 * 60 * 1000);
 
 // ========== AUTO BACKUP ==========
 async function autoBackupToTelegram() {
@@ -166,7 +82,27 @@ setInterval(async () => {
   }
 }, 60 * 60 * 1000);
 
-// ========== AUTO DELETE CANCELED/EXPIRED ==========
+// ========== AUTO REPORT PENJUALAN HARIAN ==========
+async function dailyRevenueReport() {
+  const db = await getDB();
+  const today = new Date().toISOString().split('T')[0];
+  const todayOrders = db.orders.filter(o => {
+    if (!o.paidAt) return false;
+    return o.paidAt.split('T')[0] === today;
+  });
+  const totalRevenue = todayOrders.reduce((sum, o) => sum + (o.totalAmount || o.price || 0), 0);
+  await sendTelegramMessage(`📊 LAPORAN HARIAN\n📅 ${today}\n💰 Pendapatan: Rp ${totalRevenue.toLocaleString()}\n📦 Transaksi: ${todayOrders.length}`);
+}
+let lastReportDate = '';
+setInterval(async () => {
+  const today = new Date().toISOString().split('T')[0];
+  if (lastReportDate !== today && new Date().getHours() === 0) {
+    lastReportDate = today;
+    await dailyRevenueReport();
+  }
+}, 60 * 60 * 1000);
+
+// ========== AUTO DELETE CANCELLED/EXPIRED ==========
 async function cleanupOrders() {
   const db = await getDB();
   let deletedCount = 0;
@@ -187,6 +123,21 @@ async function cleanupOrders() {
 setInterval(cleanupOrders, 30 * 1000);
 cleanupOrders();
 
+// ========== CANCEL QRIS DI QRISPY ==========
+async function cancelQRISInQrispy(qrisId) {
+  try {
+    const response = await fetch(`${QRISPY_API_URL}/api/payment/qris/${qrisId}/cancel`, {
+      method: 'POST',
+      headers: { 'X-API-Token': QRISPY_TOKEN, 'Content-Type': 'application/json' }
+    });
+    const data = await response.json();
+    return data.status === 'success';
+  } catch (err) {
+    console.error('Cancel QRIS error:', err);
+    return false;
+  }
+}
+
 // ========== CANCEL ORDER ==========
 app.post('/api/cancel-order/:orderId', async (req, res) => {
   const db = await getDB();
@@ -194,10 +145,9 @@ app.post('/api/cancel-order/:orderId', async (req, res) => {
   if (!order) return res.status(404).json({ error: 'Order tidak ditemukan' });
   if (order.status !== 'pending') return res.status(400).json({ error: 'Order sudah diproses' });
   
-  if (order.qrisId && order.qrisId !== 'test-' && !order.qrisId.startsWith('test')) {
+  if (order.qrisId && order.qrisId !== 'test-') {
     await cancelQRISInQrispy(order.qrisId);
   }
-  
   order.status = 'cancelled';
   order.cancelledAt = new Date().toISOString();
   await setDB(db.products, db.orders, db.sha);
@@ -208,7 +158,6 @@ app.post('/api/cancel-order/:orderId', async (req, res) => {
 app.post('/api/admin/test-order', async (req, res) => {
   const { productId, adminKey } = req.body;
   if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  
   const db = await getDB();
   const product = db.products.find(p => p.id == productId);
   if (!product) return res.status(404).json({ error: 'Produk tidak ditemukan' });
@@ -220,12 +169,7 @@ app.post('/api/admin/test-order', async (req, res) => {
   
   let bonusHtml = '';
   if (product.bonusContent && product.bonusContent !== '') {
-    if (product.bonusContent.includes('\n')) {
-      const items = product.bonusContent.split('\n').filter(item => item.trim());
-      bonusHtml = `<div class="section"><div class="section-title"><i class="fas fa-gift"></i> Bonus</div><ul class="bonus-list">${items.map(item => `<li><i class="fas fa-star"></i> ${escapeHtml(item.trim())}</li>`).join('')}</ul></div>`;
-    } else {
-      bonusHtml = `<div class="section"><div class="section-title"><i class="fas fa-gift"></i> Bonus</div><div class="text-content">${escapeHtml(product.bonusContent)}</div><button class="chip-btn copy-btn" data-copy="${escapeHtml(product.bonusContent).replace(/"/g, '&quot;')}"><i class="fas fa-copy"></i> Salin Teks</button></div>`;
-    }
+    bonusHtml = `<div class="section"><div class="section-title"><i class="fas fa-gift"></i> Bonus</div><div class="text-content">${escapeHtml(product.bonusContent)}</div></div>`;
   }
   
   let itemHtml = '';
@@ -233,87 +177,31 @@ app.post('/api/admin/test-order', async (req, res) => {
   const isHtml = product.itemType === 'html';
   
   if (isHtml) {
-    const rawHtml = product.itemContent;
-    const escapedForAttr = rawHtml.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/\n/g, '\\n');
-    itemHtml = `<div class="section"><div class="section-title"><i class="fas fa-code"></i> Barang Utama (HTML)</div><div class="item-row"><div class="item-content"><div class="html-preview" style="background:#0f172a; padding:12px; border-radius:12px; color:#e2e8f0; font-size:0.75rem; font-family:monospace; white-space:pre-wrap; word-break:break-all; max-height:200px; overflow:auto; border:1px solid #334155;">${rawHtml}</div></div><div style="display: flex; gap: 8px; flex-wrap: wrap;"><button class="chip-btn preview-btn" data-html="${escapedForAttr}"><i class="fas fa-eye"></i> Cek</button><button class="chip-btn copy-btn" data-copy="${escapedForAttr}"><i class="fas fa-copy"></i> Salin HTML</button></div></div></div>`;
+    itemHtml = `<div class="section"><div class="section-title"><i class="fas fa-code"></i> Barang Utama (HTML)</div><div class="text-content">${product.itemContent}</div><button class="chip-btn copy-btn" onclick="copyToClipboard('${escapeHtml(product.itemContent).replace(/'/g, "\\'")}')"><i class="fas fa-copy"></i> Salin HTML</button></div>`;
   } else if (isLink) {
-    const escapedContent = escapeHtml(product.itemContent).replace(/"/g, '&quot;');
-    itemHtml = `<div class="section"><div class="section-title"><i class="fas fa-box"></i> Barang Utama</div><div class="item-row"><div class="item-content"><div class="text-content">${escapeHtml(product.itemContent)}</div></div><div style="display: flex; gap: 8px;"><button class="chip-btn copy-btn" data-copy="${escapedContent}"><i class="fas fa-copy"></i> Salin Link</button><a href="${escapeHtml(product.itemContent)}" class="chip-btn link-chip" target="_blank"><i class="fas fa-external-link-alt"></i> Buka</a></div></div></div>`;
+    itemHtml = `<div class="section"><div class="section-title"><i class="fas fa-box"></i> Barang Utama</div><div class="text-content">${escapeHtml(product.itemContent)}</div><a href="${escapeHtml(product.itemContent)}" class="chip-btn link-chip" target="_blank"><i class="fas fa-external-link-alt"></i> Buka</a><button class="chip-btn copy-btn" onclick="copyToClipboard('${escapeHtml(product.itemContent).replace(/'/g, "\\'")}')"><i class="fas fa-copy"></i> Salin Link</button></div>`;
   } else {
-    const escapedContent = escapeHtml(product.itemContent).replace(/"/g, '&quot;');
-    itemHtml = `<div class="section"><div class="section-title"><i class="fas fa-box"></i> Barang Utama</div><div class="item-row"><div class="item-content"><div class="text-content">${escapeHtml(product.itemContent)}</div></div><button class="chip-btn copy-btn" data-copy="${escapedContent}"><i class="fas fa-copy"></i> Salin Teks</button></div></div>`;
+    itemHtml = `<div class="section"><div class="section-title"><i class="fas fa-box"></i> Barang Utama</div><div class="text-content">${escapeHtml(product.itemContent)}</div><button class="chip-btn copy-btn" onclick="copyToClipboard('${escapeHtml(product.itemContent).replace(/'/g, "\\'")}')"><i class="fas fa-copy"></i> Salin Teks</button></div>`;
   }
   
-  res.send(`<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Order | ${escapeHtml(product.name)}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-        body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
-        .card { background: rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius: 32px; padding: 32px; max-width: 580px; width: 100%; border: 1px solid rgba(255,255,255,0.08); }
-        .logo { text-align: center; margin-bottom: 20px; }
-        .logo h2 { font-size: 1.3rem; font-weight: 700; background: linear-gradient(135deg, #ffffff, #94a3f8); background-clip: text; -webkit-background-clip: text; color: transparent; }
-        .success-icon { text-align: center; margin-bottom: 20px; }
-        .success-icon i { font-size: 4rem; color: #10b981; }
-        h1 { text-align: center; color: #10b981; font-size: 1.5rem; font-weight: 700; margin-bottom: 20px; }
-        .product-name { font-size: 1.2rem; font-weight: 600; color: white; text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .section { background: rgba(0,0,0,0.3); border-radius: 20px; padding: 18px; margin-bottom: 16px; }
-        .section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: #60a5fa; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .item-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-        .text-content { color: #e2e8f0; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
-        .chip-btn { background: #334155; border: none; padding: 6px 14px; border-radius: 40px; color: white; font-size: 0.7rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
-        .chip-btn:hover { background: #3b82f6; transform: translateY(-2px); }
-        .link-chip { background: #3b82f6; text-decoration: none; }
-        .bonus-list { list-style: none; }
-        .bonus-list li { color: #e2e8f0; font-size: 0.85rem; padding: 6px 0; display: flex; align-items: center; gap: 8px; }
-        .bonus-list li i { color: #f59e0b; font-size: 0.7rem; }
-        .footer-note { text-align: center; color: #475569; font-size: 0.65rem; margin-top: 20px; }
-        .btn-back { background: #334155; border: none; padding: 10px 20px; border-radius: 40px; color: white; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; margin-top: 10px; }
-        .btn-back:hover { background: #475569; transform: translateY(-2px); }
-    </style>
+  res.send(`<!DOCTYPE html><html><head><title>Test Order</title><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box;user-select:none;}
+body{background:linear-gradient(135deg,#0f172a,#1e1b4b);font-family:Arial,sans-serif;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px;}
+.card{background:rgba(255,255,255,0.1);border-radius:32px;padding:32px;max-width:500px;width:100%;}
+h1{color:#10b981;text-align:center;margin-bottom:20px;}
+.product-name{color:white;text-align:center;margin-bottom:24px;}
+.section{background:rgba(0,0,0,0.3);border-radius:20px;padding:16px;margin-bottom:16px;}
+.section-title{color:#60a5fa;margin-bottom:10px;}
+.text-content{color:#e2e8f0;margin-bottom:10px;word-break:break-all;}
+.chip-btn{background:#334155;border:none;padding:6px 14px;border-radius:40px;color:white;cursor:pointer;}
+.btn-back{background:#334155;border:none;padding:10px 20px;border-radius:40px;color:white;cursor:pointer;text-decoration:none;display:inline-block;}
+.footer-note{text-align:center;color:#475569;margin-top:20px;}
+</style>
 </head>
 <body>
-    <div class="card">
-        <div class="logo"><h2><i class="fas fa-store"></i> Yanto Store</h2></div>
-        <div class="success-icon"><i class="fas fa-check-circle"></i></div>
-        <h1>✅ TEST ORDER BERHASIL!</h1>
-        <div class="product-name">${escapeHtml(product.name)}</div>
-        ${itemHtml}
-        ${bonusHtml}
-        <div style="text-align: center; margin-top: 20px;">
-            <a href="/" class="btn-back"><i class="fas fa-home"></i> Kembali ke Beranda</a>
-        </div>
-        <div class="footer-note"><i class="fas fa-flask"></i> Mode test - tidak mempengaruhi stok & database</div>
-    </div>
-    <script>
-        function copyToClipboard(text) {
-            try { navigator.clipboard.writeText(text); alert('📋 Tersalin!'); }
-            catch(e) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); alert('📋 Tersalin!'); }
-        }
-        document.querySelectorAll('.copy-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const text = this.getAttribute('data-copy');
-                if (text) copyToClipboard(text);
-            });
-        });
-        document.querySelectorAll('.preview-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const htmlContent = this.getAttribute('data-html');
-                if (htmlContent) {
-                    const win = window.open();
-                    win.document.write(htmlContent);
-                    win.document.close();
-                }
-            });
-        });
-    </script>
-</body>
-</html>`);
+<div class="card"><h1>✅ TEST ORDER BERHASIL!</h1><div class="product-name">${escapeHtml(product.name)}</div>${itemHtml}${bonusHtml}<div style="text-align:center;margin-top:20px;"><a href="/" class="btn-back">Kembali</a></div><div class="footer-note">Mode test - tidak mempengaruhi stok</div></div>
+<script>function copyToClipboard(t){try{navigator.clipboard.writeText(t),alert('Tersalin!')}catch(e){const n=document.createElement('textarea');n.value=t,document.body.appendChild(n),n.select(),document.execCommand('copy'),document.body.removeChild(n),alert('Tersalin!')}}</script>
+</body></html>`);
 });
 
 // ========== API GET ORDER ==========
@@ -340,16 +228,12 @@ app.get('/api/check-payment/:orderCode', async (req, res) => {
   const db = await getDB();
   const order = db.orders.find(o => o.orderCode === req.params.orderCode);
   if (!order) return res.json({ status: 'not_found' });
-  
-  if (order.status === 'paid') {
-    return res.json({ status: 'paid', productCode: order.productCode });
-  }
+  if (order.status === 'paid') return res.json({ status: 'paid', productCode: order.productCode });
   if (new Date(order.expiredAt) < new Date()) {
     order.status = 'expired';
     await setDB(db.products, db.orders, db.sha);
     return res.json({ status: 'expired' });
   }
-  
   try {
     const response = await fetch(`${QRISPY_API_URL}/api/payment/qris/${order.qrisId}/status`, {
       headers: { 'X-API-Token': QRISPY_TOKEN }
@@ -412,8 +296,7 @@ app.post('/api/create-order', async (req, res) => {
 async function generateQRIS(amount, paymentReference) {
   try {
     const response = await fetch(`${QRISPY_API_URL}/api/payment/qris/generate`, {
-      method: 'POST',
-      headers: { 'X-API-Token': QRISPY_TOKEN, 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'X-API-Token': QRISPY_TOKEN, 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount, payment_reference: paymentReference })
     });
     return await response.json();
@@ -422,8 +305,10 @@ async function generateQRIS(amount, paymentReference) {
   }
 }
 
-// ========== ADMIN API (dengan verifikasi token) ==========
-app.get('/api/admin/stats', verifyAdminToken, async (req, res) => {
+// ========== ADMIN API (Password Langsung, Tanpa Token) ==========
+app.get('/api/admin/stats', async (req, res) => {
+  const { adminKey } = req.query;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   const db = await getDB();
   const paidOrders = db.orders.filter(o => o.status === 'paid');
   const totalRevenue = paidOrders.reduce((sum, o) => sum + (o.totalAmount || o.price || 0), 0);
@@ -441,25 +326,32 @@ app.get('/api/admin/stats', verifyAdminToken, async (req, res) => {
   });
 });
 
-app.get('/api/admin/products', verifyAdminToken, async (req, res) => {
+app.get('/api/admin/products', async (req, res) => {
+  const { adminKey } = req.query;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   const db = await getDB();
   res.json({ success: true, products: db.products });
 });
 
-app.get('/api/admin/orders', verifyAdminToken, async (req, res) => {
+app.get('/api/admin/orders', async (req, res) => {
+  const { adminKey } = req.query;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   const db = await getDB();
   res.json({ success: true, orders: db.orders });
 });
 
-app.get('/api/admin/product/:id', verifyAdminToken, async (req, res) => {
+app.get('/api/admin/product/:id', async (req, res) => {
+  const { adminKey } = req.query;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   const db = await getDB();
   const product = db.products.find(p => p.id == req.params.id);
   if (!product) return res.status(404).json({ error: 'Product not found' });
   res.json({ success: true, product });
 });
 
-app.post('/api/admin/product', verifyAdminToken, async (req, res) => {
-  const { name, description, price, stock, itemType, itemContent, bonusType, bonusContent } = req.body;
+app.post('/api/admin/product', async (req, res) => {
+  const { name, description, price, stock, itemType, itemContent, bonusType, bonusContent, adminKey } = req.body;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   if (!name || !itemContent || price <= 0) return res.status(400).json({ error: 'Invalid data' });
   const db = await getDB();
   db.products.push({
@@ -478,8 +370,9 @@ app.post('/api/admin/product', verifyAdminToken, async (req, res) => {
   res.json({ success: true });
 });
 
-app.put('/api/admin/product/:id', verifyAdminToken, async (req, res) => {
-  const { name, description, price, stock, itemType, itemContent, bonusType, bonusContent } = req.body;
+app.put('/api/admin/product/:id', async (req, res) => {
+  const { name, description, price, stock, itemType, itemContent, bonusType, bonusContent, adminKey } = req.body;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   if (!name || !itemContent || price <= 0) return res.status(400).json({ error: 'Invalid data' });
   const db = await getDB();
   const index = db.products.findIndex(p => p.id == req.params.id);
@@ -489,14 +382,18 @@ app.put('/api/admin/product/:id', verifyAdminToken, async (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/api/admin/product/:id', verifyAdminToken, async (req, res) => {
+app.delete('/api/admin/product/:id', async (req, res) => {
+  const { adminKey } = req.body;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   const db = await getDB();
   db.products = db.products.filter(p => p.id != req.params.id);
   await setDB(db.products, db.orders, db.sha);
   res.json({ success: true });
 });
 
-app.post('/api/admin/reset-orders', verifyAdminToken, async (req, res) => {
+app.post('/api/admin/reset-orders', async (req, res) => {
+  const { adminKey } = req.body;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   const db = await getDB();
   const paidOrders = db.orders.filter(o => o.status === 'paid');
   const deletedCount = db.orders.length - paidOrders.length;
@@ -505,8 +402,9 @@ app.post('/api/admin/reset-orders', verifyAdminToken, async (req, res) => {
   res.json({ success: true, deletedCount, keptCount: paidOrders.length });
 });
 
-app.post('/api/admin/delete-selected-orders', verifyAdminToken, async (req, res) => {
-  const { orderIds } = req.body;
+app.post('/api/admin/delete-selected-orders', async (req, res) => {
+  const { adminKey, orderIds } = req.body;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   if (!orderIds || !orderIds.length) return res.status(400).json({ error: 'Tidak ada order dipilih' });
   const db = await getDB();
   db.orders = db.orders.filter(o => !orderIds.includes(o.id.toString()));
@@ -514,19 +412,21 @@ app.post('/api/admin/delete-selected-orders', verifyAdminToken, async (req, res)
   res.json({ success: true, deletedCount: orderIds.length });
 });
 
-app.post('/api/admin/backup', verifyAdminToken, async (req, res) => {
+app.post('/api/admin/backup', async (req, res) => {
+  const { adminKey } = req.body;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   const db = await getDB();
   const backupData = JSON.stringify(db, null, 2);
   const formData = new FormData();
   formData.append('chat_id', TELEGRAM_CHAT_ID);
   formData.append('document', new Blob([backupData]), `backup_${Date.now()}.json`);
-  formData.append('caption', `📦 Backup database Yanto Store\n📅 ${new Date().toLocaleString()}`);
   await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument`, { method: 'POST', body: formData });
   res.json({ success: true });
 });
 
-app.post('/api/admin/broadcast', verifyAdminToken, async (req, res) => {
-  const { message } = req.body;
+app.post('/api/admin/broadcast', async (req, res) => {
+  const { adminKey, message } = req.body;
+  if (adminKey !== ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
   if (!message) return res.status(400).json({ error: 'Pesan wajib diisi' });
   const db = await getDB();
   const uniqueCustomers = [...new Map(db.orders.map(o => [o.customerName, o.customerEmail])).entries()];
