@@ -240,6 +240,7 @@ app.get('/api/products', async (req, res) => {
   res.json({ success: true, products: db.products });
 });
 
+// ========== API BUAT ORDER (MINIMAL TRANSAKSI 2000 UNTUK VOUCHER) ==========
 app.post('/api/create-order', async (req, res) => {
   const { productId, customerName, customerEmail, qrisId, qrisImage, totalAmount, expiredAt, voucherCode } = req.body;
   if (!productId || !customerName || !qrisId) {
@@ -254,7 +255,8 @@ app.post('/api/create-order', async (req, res) => {
   let discountAmount = 0;
   let usedVoucher = null;
   
-  if (voucherCode) {
+  // Voucher hanya bisa dipakai jika totalAmount >= 2000
+  if (voucherCode && totalAmount >= 2000) {
     const voucher = db.vouchers.find(v => v.code === voucherCode && v.active && new Date(v.expiredAt) > new Date());
     if (voucher && (voucher.usageLimit === null || voucher.usedCount < voucher.usageLimit)) {
       if (totalAmount >= (voucher.minAmount || 0)) {
@@ -348,7 +350,7 @@ app.post('/api/admin/voucher', verifyAdminToken, async (req, res) => {
     code: code.toUpperCase(),
     discount: parseInt(discount),
     type: type || 'percent',
-    minAmount: parseInt(minAmount) || 0,
+    minAmount: parseInt(minAmount) || 2000,
     expiredAt: expiredAt || new Date(Date.now() + 30 * 24 * 60 * 60000).toISOString(),
     usageLimit: usageLimit || null,
     usedCount: 0,
