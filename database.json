@@ -20,11 +20,11 @@
       "price": 1000,
       "stock": 97,
       "itemType": "text",
-      "itemContent": "APK: (CARI DI PLAYSTORE)\n- ZevalDigital\n- Nexapay\n- Davpay",
+      "itemContent": "APK: (CARI DI PLAYSTORE)\n- ZevalDigital\n- Nexapay (QRIS MERAH)\n- Davpay\n- Uperpay",
       "bonusType": "none",
       "bonusContent": "",
       "createdAt": "2026-04-20T15:59:06.939Z",
-      "updatedAt": "2026-04-21T17:02:26.115Z"
+      "updatedAt": "2026-04-24T04:40:48.827Z"
     },
     {
       "id": 1776940055706,
@@ -160,5 +160,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-24T04:38:03.921Z"
+  "updatedAt": "2026-04-24T04:40:48.827Z"
 }
