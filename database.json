@@ -63,10 +63,11 @@
       "totalAmount": 2000,
       "customerName": "gubeng88",
       "customerEmail": "-",
-      "status": "pending",
+      "status": "cancelled",
       "qrisImage": "https://api.qrispy.id/api/public/qris/a19e2c37-4456-430b-b831-3d817b6dab91/image",
       "expiredAt": "2026-04-24T05:21:27+00:00",
-      "createdAt": "2026-04-24T05:06:27.755Z"
+      "createdAt": "2026-04-24T05:06:27.755Z",
+      "cancelledAt": "2026-04-24T05:06:34.918Z"
     },
     {
       "id": 1777006119574,
@@ -205,5 +206,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-24T05:06:27.755Z"
+  "updatedAt": "2026-04-24T05:06:34.918Z"
 }
