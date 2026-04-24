@@ -10,6 +10,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
         body { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); font-family: 'Inter', sans-serif; min-height: 100vh; padding: 24px 16px; animation: fadeIn 0.5s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; background: rgba(255,255,255,0.06); backdrop-filter: blur(12px); border-radius: 60px; padding: 12px 20px; border: 1px solid rgba(255,255,255,0.08); }
         .logo h1 { font-size: 1.4rem; font-weight: 700; background: linear-gradient(135deg, #ffffff, #94a3f8); background-clip: text; -webkit-background-clip: text; color: transparent; display: flex; align-items: center; gap: 8px; }
         .logo p { font-size: 0.7rem; color: #94a3b8; }
@@ -45,7 +46,7 @@
         .btn-secondary:hover { background: #475569; }
         .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; padding: 12px 24px; border-radius: 40px; font-size: 0.85rem; opacity: 0; transition: 0.3s; z-index: 1200; color: white; display: flex; align-items: center; gap: 8px; }
         .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 8px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .voucher-hint { font-size: 0.65rem; color: #f59e0b; margin-top: -5px; margin-bottom: 10px; display: block; }
     </style>
 </head>
 <body>
@@ -72,7 +73,8 @@
         <div id="modalProductDesc" style="color:#94a3b8; font-size:0.8rem; margin:5px 0;"></div>
         <div class="modal-price" id="modalPrice"></div>
         <input type="text" id="customerName" placeholder="Nama lengkap" required>
-        <input type="text" id="voucherCode" placeholder="Kode Voucher (opsional)">
+        <input type="text" id="voucherCode" placeholder="Kode Voucher (min belanja Rp 2.000)">
+        <small class="voucher-hint"><i class="fas fa-ticket-alt"></i> Voucher hanya berlaku untuk transaksi minimal Rp 2.000</small>
         <button class="btn-primary" id="createOrderBtn"><i class="fas fa-credit-card"></i> Buat Pesanan</button>
         <button class="btn-secondary" onclick="closeModal()"><i class="fas fa-times"></i> Tutup</button>
         <div id="loadingIndicator" style="display:none; text-align:center; margin-top:15px;"><span class="loading"></span> Membuat pesanan...</div>
@@ -86,12 +88,24 @@
     let currentProduct = null;
 
     function toggleMenu() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').classList.toggle('show'); }
-    function toast(msg, isError = false) { const t = document.getElementById('toast'); t.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> ${msg}`; t.style.background = isError ? '#b91c1c' : '#1e293b'; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 3000); }
+    
+    function toast(msg, isError = false) { 
+        const t = document.getElementById('toast'); 
+        t.innerHTML = `<i class="fas ${isError ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> ${msg}`; 
+        t.style.background = isError ? '#b91c1c' : '#1e293b'; 
+        t.style.opacity = '1'; 
+        setTimeout(() => t.style.opacity = '0', 3000); 
+    }
 
     async function loadProducts() {
         try {
-            const res = await fetch('/api/products'); const data = await res.json(); const grid = document.getElementById('productsGrid');
-            if (!data.products || data.products.length === 0) { grid.innerHTML = '<div style="text-align:center;"><i class="fas fa-inbox"></i> Belum ada produk</div>'; return; }
+            const res = await fetch('/api/products'); 
+            const data = await res.json(); 
+            const grid = document.getElementById('productsGrid');
+            if (!data.products || data.products.length === 0) { 
+                grid.innerHTML = '<div style="text-align:center;"><i class="fas fa-inbox"></i> Belum ada produk</div>'; 
+                return; 
+            }
             grid.innerHTML = data.products.map((p, i) => `<div class="product-card" style="animation-delay: ${i * 0.05}s" onclick='openModal(${JSON.stringify(p).replace(/'/g, "&#39;")})'>
                 <div class="product-name"><i class="fas fa-box"></i> ${escapeHtml(p.name)}</div>
                 <div class="product-desc">${escapeHtml(p.description || '')}</div>
@@ -103,22 +117,83 @@
     }
 
     function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
-    function openModal(product) { if (product.stock <= 0) { toast('Stok habis!', true); return; } currentProduct = product; document.getElementById('modalProductName').innerText = product.name; document.getElementById('modalProductDesc').innerText = product.description || ''; document.getElementById('modalPrice').innerHTML = `Rp ${product.price.toLocaleString()}`; document.getElementById('customerName').value = ''; document.getElementById('voucherCode').value = ''; document.getElementById('modal').style.display = 'flex'; }
+    
+    function openModal(product) { 
+        if (product.stock <= 0) { toast('Stok habis!', true); return; } 
+        currentProduct = product; 
+        document.getElementById('modalProductName').innerText = product.name; 
+        document.getElementById('modalProductDesc').innerText = product.description || ''; 
+        document.getElementById('modalPrice').innerHTML = `Rp ${product.price.toLocaleString()}`; 
+        document.getElementById('customerName').value = ''; 
+        document.getElementById('voucherCode').value = ''; 
+        document.getElementById('modal').style.display = 'flex'; 
+    }
+    
     function closeModal() { document.getElementById('modal').style.display = 'none'; currentProduct = null; }
-    async function generateQRIS(amount) { const response = await fetch(`${QRISPY_API_URL}/api/payment/qris/generate`, { method: 'POST', headers: { 'X-API-Token': QRISPY_TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ amount }) }); const data = await response.json(); if (data.status !== 'success') throw new Error(data.message || 'Gagal generate QRIS'); return data.data; }
+    
+    async function generateQRIS(amount) { 
+        const response = await fetch(`${QRISPY_API_URL}/api/payment/qris/generate`, { 
+            method: 'POST', 
+            headers: { 'X-API-Token': QRISPY_TOKEN, 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ amount }) 
+        }); 
+        const data = await response.json(); 
+        if (data.status !== 'success') throw new Error(data.message || 'Gagal generate QRIS'); 
+        return data.data; 
+    }
 
     document.getElementById('createOrderBtn').onclick = async () => {
-        const name = document.getElementById('customerName').value.trim(); if (!name) { toast('Nama wajib diisi', true); return; }
-        const voucherCode = document.getElementById('voucherCode').value.trim();
-        const btn = document.getElementById('createOrderBtn'); const loading = document.getElementById('loadingIndicator'); btn.style.display = 'none'; loading.style.display = 'block';
+        const name = document.getElementById('customerName').value.trim(); 
+        if (!name) { toast('Nama wajib diisi', true); return; }
+        const voucherCode = document.getElementById('voucherCode').value.trim().toUpperCase();
+        const btn = document.getElementById('createOrderBtn'); 
+        const loading = document.getElementById('loadingIndicator'); 
+        btn.style.display = 'none'; 
+        loading.style.display = 'block';
+        
         try {
-            const totalAmount = currentProduct.price; const qrisData = await generateQRIS(totalAmount);
-            const orderRes = await fetch('/api/create-order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId: currentProduct.id, customerName: name, customerEmail: '-', qrisId: qrisData.qris_id, qrisImage: qrisData.qris_image_url, totalAmount: totalAmount, expiredAt: qrisData.expired_at, voucherCode: voucherCode }) });
-            const orderData = await orderRes.json(); if (!orderData.success) throw new Error(orderData.error);
-            if (orderData.discountAmount > 0) toast(`💰 Hemat Rp ${orderData.discountAmount.toLocaleString()} dengan kode voucher!`);
+            const totalAmount = currentProduct.price;
+            
+            // Cek minimal transaksi untuk voucher
+            if (voucherCode && totalAmount < 2000) {
+                toast('⚠️ Voucher hanya berlaku untuk transaksi minimal Rp 2.000!', true);
+                btn.style.display = 'block';
+                loading.style.display = 'none';
+                return;
+            }
+            
+            const qrisData = await generateQRIS(totalAmount);
+            
+            const orderRes = await fetch('/api/create-order', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    productId: currentProduct.id, 
+                    customerName: name, 
+                    customerEmail: '-', 
+                    qrisId: qrisData.qris_id, 
+                    qrisImage: qrisData.qris_image_url, 
+                    totalAmount: totalAmount, 
+                    expiredAt: qrisData.expired_at, 
+                    voucherCode: voucherCode 
+                }) 
+            });
+            
+            const orderData = await orderRes.json(); 
+            if (!orderData.success) throw new Error(orderData.error);
+            
+            if (orderData.discountAmount > 0) {
+                toast(`💰 Hemat Rp ${orderData.discountAmount.toLocaleString()} dengan kode voucher!`);
+            }
+            
             window.location.href = `/order/${orderData.orderCode}`;
-        } catch (err) { toast(err.message, true); btn.style.display = 'block'; loading.style.display = 'none'; }
+        } catch (err) { 
+            toast(err.message, true); 
+            btn.style.display = 'block'; 
+            loading.style.display = 'none'; 
+        }
     };
+    
     loadProducts();
 </script>
 </body>
