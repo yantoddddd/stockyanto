@@ -41,23 +41,6 @@
   ],
   "orders": [
     {
-      "id": 1777076819289,
-      "orderCode": "0c09dbd1293398f83332691def3b50ff",
-      "qrisId": "a19fcb40-5bf3-4669-8ca7-f1249d840b45",
-      "productId": 1776940055706,
-      "productName": "WEB SUNTIK SOSMED",
-      "productCode": "https://fayupedia.id/",
-      "price": 2000,
-      "totalAmount": 2000,
-      "customerName": "pler",
-      "customerEmail": "-",
-      "status": "cancelled",
-      "qrisImage": "https://api.qrispy.id/api/public/qris/a19fcb40-5bf3-4669-8ca7-f1249d840b45/image",
-      "expiredAt": "2026-04-25T00:41:58+00:00",
-      "createdAt": "2026-04-25T00:26:59.289Z",
-      "cancelledAt": "2026-04-25T00:27:17.539Z"
-    },
-    {
       "id": 1777074636232,
       "orderCode": "20475b1dc422eccb1dc383c13ae67354",
       "qrisId": "a19fbe3d-2bd9-4b1d-af9d-e83a7f8b68f0",
@@ -363,5 +346,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-25T00:27:17.539Z"
+  "updatedAt": "2026-04-25T00:27:36.760Z"
 }
