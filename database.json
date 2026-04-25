@@ -77,10 +77,11 @@
       "totalAmount": 1000,
       "customerName": "EGONG",
       "customerEmail": "-",
-      "status": "pending",
+      "status": "cancelled",
       "qrisImage": "https://api.qrispy.id/api/public/qris/a1a15a5f-3365-4a37-8640-81b441ffb98b/image",
       "expiredAt": "2026-04-25T19:17:59+00:00",
-      "createdAt": "2026-04-25T19:03:00.821Z"
+      "createdAt": "2026-04-25T19:03:00.821Z",
+      "cancelledAt": "2026-04-25T19:03:10.875Z"
     },
     {
       "id": 1777143244442,
@@ -454,5 +455,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-25T19:03:00.821Z"
+  "updatedAt": "2026-04-25T19:03:10.875Z"
 }
