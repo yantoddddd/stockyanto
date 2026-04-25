@@ -51,10 +51,11 @@
       "totalAmount": 1000,
       "customerName": "pler",
       "customerEmail": "-",
-      "status": "pending",
+      "status": "cancelled",
       "qrisImage": "https://api.qrispy.id/api/public/qris/a19fcae4-d0f1-40cd-83a4-d16b792f1f27/image",
       "expiredAt": "2026-04-25T00:40:58+00:00",
-      "createdAt": "2026-04-25T00:25:59.379Z"
+      "createdAt": "2026-04-25T00:25:59.379Z",
+      "cancelledAt": "2026-04-25T00:26:32.451Z"
     },
     {
       "id": 1777074636232,
@@ -362,5 +363,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-25T00:25:59.379Z"
+  "updatedAt": "2026-04-25T00:26:32.452Z"
 }
