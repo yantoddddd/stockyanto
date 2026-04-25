@@ -66,23 +66,6 @@
   ],
   "orders": [
     {
-      "id": 1777117870518,
-      "orderCode": "543078f2b146fc8d264516c590d304f1",
-      "qrisId": "a1a0bfee-c528-47fa-b71f-62dbbcf74362",
-      "productId": 1777117600090,
-      "productName": "APK BIOSKOP/FILM",
-      "productCode": "https://www.mediafire.com/file/vdtl44kvl0xs7ip/Bee_tv.apk/file",
-      "price": 1500,
-      "totalAmount": 1500,
-      "customerName": "Yanto",
-      "customerEmail": "-",
-      "status": "cancelled",
-      "qrisImage": "https://api.qrispy.id/api/public/qris/a1a0bfee-c528-47fa-b71f-62dbbcf74362/image",
-      "expiredAt": "2026-04-25T12:06:09+00:00",
-      "createdAt": "2026-04-25T11:51:10.518Z",
-      "cancelledAt": "2026-04-25T11:51:15.363Z"
-    },
-    {
       "id": 1777064303486,
       "orderCode": "b2799e333cf874d47541b0025ca23f63",
       "qrisId": "a19f80a5-b76e-43c6-be24-7775d9669fac",
@@ -372,5 +355,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-25T11:51:15.363Z"
+  "updatedAt": "2026-04-25T11:51:26.369Z"
 }
