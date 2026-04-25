@@ -40,15 +40,16 @@
     },
     {
       "id": 1777109092543,
-      "name": "WEB NOKOS MURAH",
+      "name": "WEB NOKOS",
       "description": "Web yang jarang diketahui orang jb",
       "price": 1500,
-      "stock": 10,
+      "stock": 100,
       "itemType": "link",
       "itemContent": "https://ditznesia.id",
       "bonusType": "none",
       "bonusContent": "",
-      "createdAt": "2026-04-25T09:24:52.543Z"
+      "createdAt": "2026-04-25T09:24:52.543Z",
+      "updatedAt": "2026-04-25T11:52:11.448Z"
     },
     {
       "id": 1777117600090,
@@ -355,5 +356,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-25T11:51:26.369Z"
+  "updatedAt": "2026-04-25T11:52:11.448Z"
 }
