@@ -117,22 +117,6 @@
       "paidAt": "2026-04-26T00:05:10+00:00"
     },
     {
-      "id": 1777159001927,
-      "orderCode": "1f06044b09763c7d84a40c6773bfbfc8",
-      "qrisId": "a1a1b518-129d-428d-ab49-bce0e9912968",
-      "productId": 1777109092543,
-      "productName": "WEB NOKOS",
-      "productCode": "https://ditznesia.id",
-      "price": 1500,
-      "totalAmount": 1500,
-      "customerName": "NIZAM",
-      "customerEmail": "-",
-      "status": "pending",
-      "qrisImage": "https://api.qrispy.id/api/public/qris/a1a1b518-129d-428d-ab49-bce0e9912968/image",
-      "expiredAt": "2026-04-25T23:31:40+00:00",
-      "createdAt": "2026-04-25T23:16:41.927Z"
-    },
-    {
       "id": 1777148654706,
       "orderCode": "4fd5fb033922a131b257f68aaa51c134",
       "qrisId": "a1a1776b-e6c3-413b-8e4c-cee2cf4b9d17",
@@ -167,22 +151,6 @@
       "paidAt": "2026-04-25T18:54:29+00:00"
     },
     {
-      "id": 1777143127526,
-      "orderCode": "d7a2d2fc4f7b4ba5cc71ce00c234c777",
-      "qrisId": "a1a1567a-6b3c-455e-baa0-86031718be37",
-      "productId": 1777117600090,
-      "productName": "APK BIOSKOP/FILM",
-      "productCode": "https://www.mediafire.com/file/vdtl44kvl0xs7ip/Bee_tv.apk/file",
-      "price": 1000,
-      "totalAmount": 1000,
-      "customerName": "rajaa",
-      "customerEmail": "-",
-      "status": "pending",
-      "qrisImage": "https://api.qrispy.id/api/public/qris/a1a1567a-6b3c-455e-baa0-86031718be37/image",
-      "expiredAt": "2026-04-25T19:07:06+00:00",
-      "createdAt": "2026-04-25T18:52:07.526Z"
-    },
-    {
       "id": 1777141878909,
       "orderCode": "eb0beb8f04784af6f18a7832ca989ac0",
       "qrisId": "a1a14f08-90b8-4cbc-99f9-7b7bbf4d1c92",
@@ -198,38 +166,6 @@
       "expiredAt": "2026-04-25T18:46:17+00:00",
       "createdAt": "2026-04-25T18:31:18.909Z",
       "paidAt": "2026-04-25T18:31:44+00:00"
-    },
-    {
-      "id": 1777135100645,
-      "orderCode": "76084cf9f5e69ff8a49966268b3cbafd",
-      "qrisId": "a1a126a1-a0f1-44dd-b493-02ce25f82fea",
-      "productId": 1777109092543,
-      "productName": "WEB NOKOS",
-      "productCode": "https://ditznesia.id",
-      "price": 1500,
-      "totalAmount": 1500,
-      "customerName": "Angel Nastia",
-      "customerEmail": "-",
-      "status": "pending",
-      "qrisImage": "https://api.qrispy.id/api/public/qris/a1a126a1-a0f1-44dd-b493-02ce25f82fea/image",
-      "expiredAt": "2026-04-25T16:53:19+00:00",
-      "createdAt": "2026-04-25T16:38:20.645Z"
-    },
-    {
-      "id": 1777133194827,
-      "orderCode": "f0fd0a3bb96549e8a097aece386a1f8f",
-      "qrisId": "a1a11b46-4f78-4110-9495-16f0671439f1",
-      "productId": 1777109092543,
-      "productName": "WEB NOKOS",
-      "productCode": "https://ditznesia.id",
-      "price": 1500,
-      "totalAmount": 1500,
-      "customerName": "Asep",
-      "customerEmail": "-",
-      "status": "pending",
-      "qrisImage": "https://api.qrispy.id/api/public/qris/a1a11b46-4f78-4110-9495-16f0671439f1/image",
-      "expiredAt": "2026-04-25T16:21:33+00:00",
-      "createdAt": "2026-04-25T16:06:34.827Z"
     },
     {
       "id": 1777064303486,
@@ -521,5 +457,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-26T00:31:34.216Z"
+  "updatedAt": "2026-04-26T00:32:11.733Z"
 }
