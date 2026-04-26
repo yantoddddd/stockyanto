@@ -44,12 +44,12 @@
       "description": "Web yang jarang diketahui orang jb",
       "price": 1500,
       "stock": 100,
-      "itemType": "link",
-      "itemContent": "https://ditznesia.id",
+      "itemType": "text",
+      "itemContent": "1. https://ditznesia.id\n2. https://salulerid.lovable.app/",
       "bonusType": "none",
       "bonusContent": "",
       "createdAt": "2026-04-25T09:24:52.543Z",
-      "updatedAt": "2026-04-25T11:52:11.448Z"
+      "updatedAt": "2026-04-26T12:59:08.099Z"
     },
     {
       "id": 1777117600090,
@@ -555,5 +555,5 @@
       "paidAt": "2026-04-20T16:02:25+00:00"
     }
   ],
-  "updatedAt": "2026-04-26T11:33:20.315Z"
+  "updatedAt": "2026-04-26T12:59:08.100Z"
 }
